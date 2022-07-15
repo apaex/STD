@@ -1,18 +1,30 @@
 
-#include <SimpleTimer.h>
-#include <util/delay.h>
-#include <ITDB02_Graph16.h>
+
+
+#if defined(__AVR__)
 #include <avr/pgmspace.h>
+#include <util/delay.h>
+#else
+// Для совместимости с Arduino Due (пока не работает)
+#define PROGMEM
+#define PGM_P  const char *
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+#define pgm_read_word(addr) (*(const unsigned char **)(addr))
+#define strcpy_P(dest, src) strcpy((dest), (src))
+#endif
+#include <SimpleTimer.h>
+//#include <ITDB02_Graph16.h>
+#include <UTFT.h>
 #include <UTouch.h>
 #include <Wire.h>            // I2C library
 #include <EEPROM.h>
 #include "writeAnything.h"
-#include "pgmspace_big.h"
+//#include "pgmspace_big.h"
 #include <DS1307new.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <SdFat.h>
-#include <SdFatUtil.h>
+//#include <SdFatUtil.h>
 
 SimpleTimer timemillis;      // There must be one global SimpleTimer object.
 
@@ -52,11 +64,11 @@ boolean RECOM_RCD = true;               // For Mean Well drivers change "true" t
    //byte PWM_FRQ_ValueT2 = 7;	     // PWM Frequency = 30.63 hz
 
 //--------------- для пинов 44, 45, 46 (вентилятор) --------------
-     byte PWM_FRQ_Value_Fan = 1;        // PWM Frequency = 31.374 KHz
+   //byte PWM_FRQ_Value_Fan = 1;        // PWM Frequency = 31.374 KHz
    //byte PWM_FRQ_Value_Fan = 2;        // PWM Frequency = 3.921 Khz
    //byte PWM_FRQ_Value_Fan = 3;        // PWM Frequency = 490.1 Hz 
    //byte PWM_FRQ_Value_Fan = 4;        // PWM Frequency = 122 Hz for Fans
-   //byte PWM_FRQ_Value_Fan = 5;        // PWM Frequency = 30 Hz for Fans
+     byte PWM_FRQ_Value_Fan = 5;        // PWM Frequency = 30 Hz for Fans
    
    
 
@@ -74,9 +86,9 @@ const byte rgbCh8[] = {236, 214, 114};   //  Moon			|
    
 
 //(Mega Shield utilizes pins 5V, 3V3, GND, 2-6, 20-41, & (50-53 for SD Card)) 
-ITDB02 myGLCD(38,39,40,41,ITDB32S);   // Uncomment this line for the SSD1289
-//UTFT myGLCD(ITDB32S, 38,39,40,41);
-
+//ITDB02 myGLCD(38,39,40,41,ITDB32S);   // Uncomment this line for the SSD1289
+UTFT myGLCD(ITDB32S, 38,39,40,41);
+//UTFT myGLCD(HX8352A, 38,39,40,41);
 #ifdef Standard_shield
 UTouch myTouch(6,5,4,3,2);        // для стандартного шилда
 #else
@@ -121,7 +133,7 @@ int setScreensaverTupe = 0;
 extern uint8_t SmallFont[];           // маленький шрифт
 extern uint8_t BigFont[];             // большой шрифт
 extern uint8_t DotMatrix_M_Num[];     // большой матричный шрифт (только цифры)
-extern uint8_t SevenSegNumFontPlus[]; // большой шрифт
+extern uint8_t SevenSegNumFont[]; // большой шрифт
 extern uint8_t RusFont1[];            // маленькая кириллица
 extern uint8_t RusFont2[];            // большая кириллица
 extern uint8_t RusFont3[];            // средняя кириллица
@@ -571,9 +583,8 @@ extern unsigned int preset[0x195];    // preset
 
 // Картинки фаз луны  http: //arduino.cc/forum/index.php/topic,134649.0.html
    uint_farptr_t MoonPic;              // Pointer to the Lunar Phase Pic
-   extern unsigned int PROGMEM         // Lunar Phase Pics
-   Full_Moon[0xAF9], 
-   First_Quarter[0xAF9];  
+   extern unsigned int Full_Moon[0xAF9];         // Lunar Phase Pics   
+   extern unsigned int First_Quarter[0xAF9];  
 
 float LC = 29.53059;       // 1 Lunar Cycle = 29.53059 days
 String LP;                 // LP = Lunar Phase - variable used to print out Moon Phase
@@ -586,45 +597,45 @@ byte MaxI = 90;            // максимальная
 float lunar_perc;
  
 //================================= Текстовые надписи в printHeader (верхний баннер) ========================================
-prog_char Header_Text_string0[] PROGMEM="CK@BMNE LEM^";                           // ГЛАВНОЕ МЕНЮ
-prog_char Header_Text_string1[] PROGMEM="SQR@MNBJ@ BPELEMH H D@R[";               // УСТАНОВКА ВРЕМЕНИ И ДАТЫ
-prog_char Header_Text_string2[] PROGMEM="SQR@MNBJ@ RELOEP@RSP[ BND[";             // УСТАНОВКА ТЕМПЕРАТУРЫ ВОДЫ
-prog_char Header_Text_string3[] PROGMEM="@BRNL@RHWEQJNE REQRHPNB@MHE J@M@KNB";    // АВТОМАТИЧЕСКОЕ ТЕСТИРОВАНИЕ КАНАЛОВ
-prog_char Header_Text_string4[] PROGMEM="PSWMNI REQR NQBEYEMH_";                  // РУЧНОЙ ТЕСТ ОСВЕЩЕНИЯ
-prog_char Header_Text_string5[] PROGMEM="M@QRPNIJ@ J@M@KNB ON VBER@L";            // НАСТРОЙКА КАНАЛОВ ПО ЦВЕТАМ
-prog_char Header_Text_string6[] PROGMEM="SQR@MNBJ@ _PJNQRH KSM[";                 // УСТАНОВКА ЯРКОСТИ ЛУНЫ
-prog_char Header_Text_string7[] PROGMEM="@BRNDNKHB";                              // АВТОДОЛИВ        
-prog_char Header_Text_string8[] PROGMEM="M@QRPNIJ@ DN3@RNPNB";                    // НАСТРОЙКА ДОЗАТОРОВ
-prog_char Header_Text_string9[] PROGMEM="M@QRPNIJ@ OND@WH SCKEJHQKNR[";           // НАСТРОЙКА ПОДАЧИ УГЛЕКИСЛОТЫ 
-prog_char Header_Text_string10[] PROGMEM="CK@BM[E M@QRPNIJH Qrp. 1";              // ГЛАВНЫЕ НАСТРОЙКИ, СТР. 1
-prog_char Header_Text_string11[] PROGMEM="CK@BM[E M@QRPNIJH Qrp. 2";              // ГЛАВНЫЕ НАСТРОЙКИ, СТР. 2
-prog_char Header_Text_string12[] PROGMEM="CK@BM[E M@QRPNIJH Qrp. 3";              // ГЛАВНЫЕ НАСТРОЙКИ, СТР. 3 
-prog_char Header_Text_string13[] PROGMEM="M@QRPNIJ@ _PJNQRH ]JP@M@";              // НАСТРОЙКА ЯРКОСТИ ЭКРАНА (подсветка)
-prog_char Header_Text_string14[] PROGMEM="SQR@MNBJ@ RELOEP@RSP[ BJK.BEMRHK_RNPNB";// УСТАНОВКА ТЕМПЕРАТУРЫ ВКЛ. ВЕНТИЛЯТОРОВ
-prog_char Header_Text_string15[] PROGMEM="SLEM&XEMHE _PJNQRH OPH OEPECPEBE";      // УМЕНЬШЕНИЕ ЯРКОСТИ ПРИ ПЕРЕГРЕВЕ
-prog_char Header_Text_string16[] PROGMEM="SQR@MNBJH UP@MHREK_ ]JP@M@";            // УСТАНОВКИ ХРАНИТЕЛЯ ЭКРАНА
-prog_char Header_Text_string17[] PROGMEM="QSRNWM[E R@ILEP[";                      // УСТАНОВКИ ТАЙМЕРОВ
+ PROGMEM const char Header_Text_string0[] ="CK@BMNE LEM^";                           // ГЛАВНОЕ МЕНЮ
+ PROGMEM const char Header_Text_string1[] ="SQR@MNBJ@ BPELEMH H D@R[";               // УСТАНОВКА ВРЕМЕНИ И ДАТЫ
+ PROGMEM const char Header_Text_string2[] ="SQR@MNBJ@ RELOEP@RSP[ BND[";             // УСТАНОВКА ТЕМПЕРАТУРЫ ВОДЫ
+ PROGMEM const char Header_Text_string3[] ="@BRNL@RHWEQJNE REQRHPNB@MHE J@M@KNB";    // АВТОМАТИЧЕСКОЕ ТЕСТИРОВАНИЕ КАНАЛОВ
+ PROGMEM const char Header_Text_string4[] ="PSWMNI REQR NQBEYEMH_";                  // РУЧНОЙ ТЕСТ ОСВЕЩЕНИЯ
+ PROGMEM const char Header_Text_string5[] ="M@QRPNIJ@ J@M@KNB ON VBER@L";            // НАСТРОЙКА КАНАЛОВ ПО ЦВЕТАМ
+ PROGMEM const char Header_Text_string6[] ="SQR@MNBJ@ _PJNQRH KSM[";                 // УСТАНОВКА ЯРКОСТИ ЛУНЫ
+ PROGMEM const char Header_Text_string7[] ="@BRNDNKHB";                              // АВТОДОЛИВ        
+ PROGMEM const char Header_Text_string8[] ="M@QRPNIJ@ DN3@RNPNB";                    // НАСТРОЙКА ДОЗАТОРОВ
+ PROGMEM const char Header_Text_string9[] ="M@QRPNIJ@ OND@WH SCKEJHQKNR[";           // НАСТРОЙКА ПОДАЧИ УГЛЕКИСЛОТЫ 
+ PROGMEM const char Header_Text_string10[] ="CK@BM[E M@QRPNIJH Qrp. 1";              // ГЛАВНЫЕ НАСТРОЙКИ, СТР. 1
+ PROGMEM const char Header_Text_string11[] ="CK@BM[E M@QRPNIJH Qrp. 2";              // ГЛАВНЫЕ НАСТРОЙКИ, СТР. 2
+ PROGMEM const char Header_Text_string12[] ="CK@BM[E M@QRPNIJH Qrp. 3";              // ГЛАВНЫЕ НАСТРОЙКИ, СТР. 3 
+ PROGMEM const char Header_Text_string13[] ="M@QRPNIJ@ _PJNQRH ]JP@M@";              // НАСТРОЙКА ЯРКОСТИ ЭКРАНА (подсветка)
+ PROGMEM const char Header_Text_string14[] ="SQR@MNBJ@ RELOEP@RSP[ BJK.BEMRHK_RNPNB";// УСТАНОВКА ТЕМПЕРАТУРЫ ВКЛ. ВЕНТИЛЯТОРОВ
+ PROGMEM const char Header_Text_string15[] ="SLEM&XEMHE _PJNQRH OPH OEPECPEBE";      // УМЕНЬШЕНИЕ ЯРКОСТИ ПРИ ПЕРЕГРЕВЕ
+ PROGMEM const char Header_Text_string16[] ="SQR@MNBJH UP@MHREK_ ]JP@M@";            // УСТАНОВКИ ХРАНИТЕЛЯ ЭКРАНА
+ PROGMEM const char Header_Text_string17[] ="QSRNWM[E R@ILEP[";                      // УСТАНОВКИ ТАЙМЕРОВ
 # ifdef freshwater
-prog_char Header_Text_string18[] PROGMEM="SQR@MNBJH R@ILEP@ 1 @]P@VH_";           // УСТАНОВКИ ТАЙМЕРА 1 АЭРАЦИЯ
-prog_char Header_Text_string19[] PROGMEM="SQR@MNBJH R@ILEP@ 2 QN2";               // УСТАНОВКИ ТАЙМЕРА 2 СО2
-prog_char Header_Text_string20[] PROGMEM="SQR@MNBJH R@ILEP@ 3 THK&RP";            // УСТАНОВКИ ТАЙМЕРА 3 ФИЛЬТР
-prog_char Header_Text_string21[] PROGMEM="SQR@MNBJH R@ILEP@ 4 ST K@LO@";          // УСТАНОВКИ ТАЙМЕРА 4 УФ ЛАМПА
-prog_char Header_Text_string22[] PROGMEM="SQR@MNBJH R@ILEP@ 5 DNKHB";             // УСТАНОВКИ ТАЙМЕРА 5 ДОЛИВ
+ PROGMEM const char Header_Text_string18[] ="SQR@MNBJH R@ILEP@ 1 @]P@VH_";           // УСТАНОВКИ ТАЙМЕРА 1 АЭРАЦИЯ
+ PROGMEM const char Header_Text_string19[] ="SQR@MNBJH R@ILEP@ 2 QN2";               // УСТАНОВКИ ТАЙМЕРА 2 СО2
+ PROGMEM const char Header_Text_string20[] ="SQR@MNBJH R@ILEP@ 3 THK&RP";            // УСТАНОВКИ ТАЙМЕРА 3 ФИЛЬТР
+ PROGMEM const char Header_Text_string21[] ="SQR@MNBJH R@ILEP@ 4 ST K@LO@";          // УСТАНОВКИ ТАЙМЕРА 4 УФ ЛАМПА
+ PROGMEM const char Header_Text_string22[] ="SQR@MNBJH R@ILEP@ 5 DNKHB";             // УСТАНОВКИ ТАЙМЕРА 5 ДОЛИВ
 # endif
 # ifdef seawater
-prog_char Header_Text_string18[] PROGMEM="SQR@MNBJH R@ILEP@ 1";                   // УСТАНОВКИ ТАЙМЕРА 1
-prog_char Header_Text_string19[] PROGMEM="SQR@MNBJH R@ILEP@ 2";                   // УСТАНОВКИ ТАЙМЕРА 2
-prog_char Header_Text_string20[] PROGMEM="SQR@MNBJH R@ILEP@ 3";                   // УСТАНОВКИ ТАЙМЕРА 3
-prog_char Header_Text_string21[] PROGMEM="SQR@MNBJH R@ILEP@ 4";                   // УСТАНОВКИ ТАЙМЕРА 4
-prog_char Header_Text_string22[] PROGMEM="SQR@MNBJH R@ILEP@ 5";                   // УСТАНОВКИ ТАЙМЕРА 5
+ PROGMEM const char Header_Text_string18[] ="SQR@MNBJH R@ILEP@ 1";                   // УСТАНОВКИ ТАЙМЕРА 1
+ PROGMEM const char Header_Text_string19[] ="SQR@MNBJH R@ILEP@ 2";                   // УСТАНОВКИ ТАЙМЕРА 2
+ PROGMEM const char Header_Text_string20[] ="SQR@MNBJH R@ILEP@ 3";                   // УСТАНОВКИ ТАЙМЕРА 3
+ PROGMEM const char Header_Text_string21[] ="SQR@MNBJH R@ILEP@ 4";                   // УСТАНОВКИ ТАЙМЕРА 4
+ PROGMEM const char Header_Text_string22[] ="SQR@MNBJH R@ILEP@ 5";                   // УСТАНОВКИ ТАЙМЕРА 5
 # endif
-prog_char Header_Text_string23[] PROGMEM="PSWMNE SOP@BKEMHE R@ILEP@LH";           // РУЧНОЕ УПРАВЛЕНИЕ ТАЙМЕРАМИ                    
-prog_char Header_Text_string24[] PROGMEM="@BRNONHQJ D@RWHJNB RELOEP@RSP[";        // АВТОПОИСК ДАТЧИКОВ ТЕМПЕРАТУРЫ
-prog_char Header_Text_string25[] PROGMEM="QNUP@MHR&, 3@CPS3HR& M@QRPNIJH";        // СОХРАНИТЬ, ЗАГРУЗИТЬ НАСТРОЙКИ
-prog_char Header_Text_string26[] PROGMEM="SQR@MNBJ@ BPELEMH DN3@RNPNB";           // УСТАНОВКА ВРЕМЕНИ ДОЗАТОРОВ//"PEFHL P@ANR[ THK&RP@";  // РЕЖИМ РАБОТЫ ФИЛЬТРА
-prog_char Header_Text_string27[] PROGMEM="SQR@MNBJ@ BPELEMH JNPLKEMH_";           // УСТАНОВКА ВРЕМЕНИ КОРМЛЕНИЯ
+ PROGMEM const char Header_Text_string23[] ="PSWMNE SOP@BKEMHE R@ILEP@LH";           // РУЧНОЕ УПРАВЛЕНИЕ ТАЙМЕРАМИ                    
+ PROGMEM const char Header_Text_string24[] ="@BRNONHQJ D@RWHJNB RELOEP@RSP[";        // АВТОПОИСК ДАТЧИКОВ ТЕМПЕРАТУРЫ
+ PROGMEM const char Header_Text_string25[] ="QNUP@MHR&, 3@CPS3HR& M@QRPNIJH";        // СОХРАНИТЬ, ЗАГРУЗИТЬ НАСТРОЙКИ
+ PROGMEM const char Header_Text_string26[] ="SQR@MNBJ@ BPELEMH DN3@RNPNB";           // УСТАНОВКА ВРЕМЕНИ ДОЗАТОРОВ//"PEFHL P@ANR[ THK&RP@";  // РЕЖИМ РАБОТЫ ФИЛЬТРА
+ PROGMEM const char Header_Text_string27[] ="SQR@MNBJ@ BPELEMH JNPLKEMH_";           // УСТАНОВКА ВРЕМЕНИ КОРМЛЕНИЯ
 
-char* Header_Text_table[]PROGMEM={   
+const PROGMEM char* const PROGMEM Header_Text_table[]  ={ 
  Header_Text_string0, Header_Text_string1, Header_Text_string2, Header_Text_string3, Header_Text_string4, 
  Header_Text_string5, Header_Text_string6, Header_Text_string7, Header_Text_string8, Header_Text_string9, 
  Header_Text_string10, Header_Text_string11, Header_Text_string12, Header_Text_string13, Header_Text_string14, 
@@ -633,202 +644,202 @@ char* Header_Text_table[]PROGMEM={
  Header_Text_string25, Header_Text_string26, Header_Text_string27, };
  
 //====================== Текстовые надписи в меню, хранящиеся во флеш ==========================
-prog_char Text_string0[] PROGMEM="BPEL_:";                 // ВРЕМЯ: 
-prog_char Text_string1[] PROGMEM="D@R@:";                  // ДАТА:
-prog_char Text_string2[] PROGMEM=""; // ----------------------------------------------------- 
-prog_char Text_string3[] PROGMEM="B TNPL@RE";              // В ФОРМАТЕ (в меню часов) 
-prog_char Text_string4[] PROGMEM="BLANK";                  // BLANK (пустой экран)
-prog_char Text_string5[] PROGMEM="CLOCK";                  // ЧАСЫ (CLOCK)
-prog_char Text_string6[] PROGMEM="Rho }jp`m`";             // Тип экрана
-prog_char Text_string7[] PROGMEM="ONJ@3[B@R& D@RS";        // ПОКАЗЫВАТЬ ДАТУ 
-prog_char Text_string8[] PROGMEM="YES";                    // ДА
-prog_char Text_string9[] PROGMEM="NO";                     // НЕТ
-prog_char Text_string10[] PROGMEM="@.W@Q[";                // А.ЧАСЫ (аналоговые часы)
-prog_char Text_string11[] PROGMEM="V.W@Q[";                // Ц.ЧАСЫ (цифровые часы)
-prog_char Text_string12[] PROGMEM="D@RW.";                 // Датч. D`rw. // ДАТЧ.
-prog_char Text_string13[] PROGMEM="LNMHRNP QNA[RHI";       // МОНИТОР СОБЫТИЙ
-prog_char Text_string14[] PROGMEM="TIME SECTOR";           // СЕКТОР ВРЕМЕНИ
-prog_char Text_string15[] PROGMEM="24HR";                  // 24ч.(формат)
-prog_char Text_string16[] PROGMEM="C";                     // С (цельсий)
-prog_char Text_string17[] PROGMEM="OK";                    // OK
-prog_char Text_string18[] PROGMEM="SQR@M.RELO.";           // УСТАН.ТЕМП.
-prog_char Text_string19[] PROGMEM="Qnup`mhr| Sqr`mnbjh";   // Сохранить Установки  
-prog_char Text_string20[] PROGMEM="3`cpsghr| Sqr`mnbjh";   // Загрузить Установки   
-prog_char Text_string21[] PROGMEM="M@QRPNHR;";             // НАСТРОИТЬ   
-prog_char Text_string22[] PROGMEM="* SOP@BKEMHE @JB@PHSLNL *"; // УПРАВЛЕНИЕ АКВАРИУМОМ  
-prog_char Text_string23[] PROGMEM="_PJNQR& J@M@KNB";       // ЯРКОСТЬ КАНАЛОВ
-prog_char Text_string24[] PROGMEM="T@3@ KSM[";             // ФАЗА ЛУНЫ
-prog_char Text_string25[] PROGMEM="RELOEP@R.";             // ТЕМПЕРАТ. (RELOEP@RSP@)  (reloep.) 
-prog_char Text_string26[] PROGMEM=" OFF ";                 // ( OFF )
-prog_char Text_string27[] PROGMEM="BND@:";                 // ВОДА :  ТЕМП.ВОДЫ (RELO BND[:)  
-prog_char Text_string28[] PROGMEM="P@D:1";                 // РАД:1   РАДИАТ Д1 (P@DH@R D1:) 
-prog_char Text_string29[] PROGMEM="P@D:2";                 // РАД:2   РАДИАТ Д2 (P@DH@R D2:)
-prog_char Text_string30[] PROGMEM="Err.";                  // Err. (Ошибка)
-prog_char Text_string31[] PROGMEM="UNKNDHK&MHJ";           // ХОЛОДИЛЬНИК 
-prog_char Text_string32[] PROGMEM="M@CPEB@REK&";           // НАГРЕВАТЕЛЬ 
-prog_char Text_string33[] PROGMEM="ALARM!!";               // ТРЕВОГА ! 
-prog_char Text_string34[] PROGMEM="(DD/LL/CCCC)";          // (ДД/MM/ГГГГ)  (день, месяц, год)
-prog_char Text_string35[] PROGMEM="CP@THJ QBERNBNCN DM_";  // ГРАФИК СВЕТОВОГО ДНЯ
-prog_char Text_string36[] PROGMEM=""; // -------------------------------------------------------
-prog_char Text_string37[] PROGMEM="3`d`mm`$ Reloep`rsp`:"; // Заданная Температура  
-prog_char Text_string38[] PROGMEM="Chqrepeghq Reloep`rsp{";// Гистерезис Температуры
-prog_char Text_string39[] PROGMEM="Chqrepeghq Rpebnch";    // Гистерезис Тревоги
-prog_char Text_string40[] PROGMEM="Bpel$";                 // Время       
-prog_char Text_string41[] PROGMEM="Boeped";                // Вперед     
-prog_char Text_string42[] PROGMEM="M`g`d";                 // Назад
-prog_char Text_string43[] PROGMEM="Test in Progress";      // Test in Progress
-prog_char Text_string44[] PROGMEM="TIME";                  // ВРЕМЯ
-prog_char Text_string45[] PROGMEM="SPNBMH B[UNDNB (0-100%)"; // УРОВНИ ВЫХОДОВ (0-100%)
-prog_char Text_string46[] PROGMEM="000";                   // 000 (три нуля)
-prog_char Text_string47[] PROGMEM="R.AEK[I";                 // БЕЛЫЙ
-prog_char Text_string48[] PROGMEM="QHMHI";                 // СИНИЙ
-prog_char Text_string49[] PROGMEM="JP@QM[I";               // КРАСНЫЙ   
-prog_char Text_string50[] PROGMEM="KSM@";                  // ЛУНА
-prog_char Text_string51[] PROGMEM="NP@MFEB[I";             // ОРАНЖЕВЫЙ
-prog_char Text_string52[] PROGMEM="THNKERNB[I";            // ФИОЛЕТОВЫЙ
-prog_char Text_string53[] PROGMEM="U.AEK[I";               // ГОЛУБОЙ   CNKSANI
-prog_char Text_string54[] PROGMEM="GEKEM[I";               // ЗЕЛЕНЫЙ   
-prog_char Text_string55[] PROGMEM="3M@WEMH_ _PJNQRH DK_ AEKNCN J@M@K@";     // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ БЕЛОГО КАНАЛА
-prog_char Text_string56[] PROGMEM="DK_ OEPEUND@ J CP@THJ@L-M@F@R& M@ ]JP@M";// ДЛЯ ПЕРЕХОДА К ГРАФИКАМ-НАЖАТЬ НА ЭКРАН
-prog_char Text_string57[] PROGMEM="3M@WEMH_ _PJNQRH DK_ CNKSANCN J@M@K@";   // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ГОЛУБОГО КАНАЛА
-prog_char Text_string58[] PROGMEM="3M@WEMH_ _PJNQRH DK_ QHMECN J@M@K@";     // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ СИНЕГО КАНАЛА
-prog_char Text_string59[] PROGMEM="3M@WEMH_ _PJNQRH DK_ JP@QMNCN J@M@K@";   // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ КРАСНОГО КАНАЛА
-prog_char Text_string60[] PROGMEM="3M@WEMH_ _PJNQRH DK_ THNKERNBNCN J@M@K@";// ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ФИОЛЕТОВОГО КАНАЛА
-prog_char Text_string61[] PROGMEM="3M@WEMH_ _PJNQRH DK_ NP@MFEBNCN J@M@K@"; // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ОРАНЖЕВОГО КАНАЛА
-prog_char Text_string62[] PROGMEM="3M@WEMH_ _PJNQRH DK_ 3EKEMNCN J@M@K@";   // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ЗЕЛЕНОГО КАНАЛА 
-prog_char Text_string63[] PROGMEM="Lhmhl`k|m`=";           // Минимальная
-prog_char Text_string64[] PROGMEM="L`jqhl`k|m`=";          // Максимальная
-prog_char Text_string65[] PROGMEM="_pjnqr|";               // Яркость (в меню луны)
-prog_char Text_string66[] PROGMEM="MNB@_ KSM@";            // НОВАЯ ЛУНА
-prog_char Text_string67[] PROGMEM="ONKM@_ KSM@";           // ПОЛНАЯ ЛУНА
-prog_char Text_string68[] PROGMEM="B BEPUMEI W@QRH ]JP@M@ B[AP@R&";   //  В ВЕРХНЕЙ ЧАСТИ ЭКРАНА ВЫБРАТЬ 
-prog_char Text_string69[] PROGMEM="K^ANI DBSUW@QNBNI NRPE3NJ BPELEMH";// ЛЮБОЙ ДВУХЧАСОВОЙ ОТРЕЗОК ВРЕМЕНИ
-prog_char Text_string70[] PROGMEM="H SQR@MNBHR& 3M@WEMH_ _PJNQRH";    //  И УСТАНОВИТЬ ЗНАЧЕНИЯ ЯРКОСТИ
-prog_char Text_string71[] PROGMEM="DK_ B[AP@MMNCN J@M@K@";            //      ДЛЯ ВЫБРАННОГО КАНАЛА
-prog_char Text_string72[] PROGMEM="DN3@RNP[";             // ДОЗАТОР УДО
-prog_char Text_string73[] PROGMEM="BND[";                   // ВОДЫ 
-prog_char Text_string74[] PROGMEM="JNPLSXJ@";               // КОРМУШКА
-prog_char Text_string75[] PROGMEM="B[JK^WHR& THK&RP";       // ВЫКЛЮЧИТЬ ФИЛЬТР
-prog_char Text_string76[] PROGMEM="SPNBEM&";         // УРОВЕНЬ // ТЕКУЩИЙ РЕЖИМ: REJSYHI PEFHL: 
-prog_char Text_string77[] PROGMEM="QKHB";          // СЛИВ // НИ ОДИН РЕЖИМ НЕ ВЫБРАН ! "MH NDHM PEFHL ME B[AP@M !"
-prog_char Text_string78[] PROGMEM="SQR@MNBJ@ SPNBM_ PM";  //  B{aephre pefhl p`anr{ onlo rewemh$"; // Выберите режим работы помп течения/ Установка уровня РН
-prog_char Text_string79[] PROGMEM="D@RWHJ@ PM";          //     Переменный или Синхронный Oepelemm{i hkh Qhmupnmm{i
-prog_char Text_string80[] PROGMEM="REJSYEE";         //  Текущее  /   Затем СОХРАНИТЕ Настройки g`rel QNUP@MHRE M`qrpnijh.
-prog_char Text_string81[] PROGMEM="3M@WEMHE"; //Значение/ ПОМПЫ РАБОТАЮТ В ПЕРЕМЕННОМ РЕЖИМЕ(при настройке большой шрифт)ONLO[ P@ANR@^R B OEPELEMMNL PEFHLE
-prog_char Text_string82[] PROGMEM="PM";                       // PH
-prog_char Text_string83[] PROGMEM="hkh m`flhre jmnojs BJK^WHR& ONLO[";  //  или нажмите кнопку ВКЛЮЧИТЬ ПОМПЫ    
-prog_char Text_string84[] PROGMEM="7";                // 7
-prog_char Text_string85[] PROGMEM="10";                // 10 
-prog_char Text_string86[] PROGMEM="BJK^WEM ONQRN_MMN";     // ВКЛЮЧЕНЫ ПОСТОЯННО (кнопка)
-prog_char Text_string87[] PROGMEM="THK&RP";    // ФИЛЬТР
-prog_char Text_string88[] PROGMEM="ON OPHMVHOS";       // ПО ПРИНЦИПУ  
-prog_char Text_string89[] PROGMEM="BJK./ B[JK.";       // ВКЛ./ВЫКЛ.  
-prog_char Text_string90[] PROGMEM="PEFHL OSK&Q@VHH";         // РЕЖИМ ПУЛЬСАЦИИ 
-prog_char Text_string91[] PROGMEM="THK&RP BJK^WEM";          // ФИЛЬТР ВКЛЮЧЕН   
-prog_char Text_string92[] PROGMEM="  THK&RP B[JK^WEM  ";         // ФИЛЬТР ВЫКЛЮЧЕН 
-prog_char Text_string93[] PROGMEM="BJK^WHR& THK&RP";          // ВКЛЮЧИТЬ ФИЛЬТР
-prog_char Text_string94[] PROGMEM="  THK&RP B[JK^WEM  ";          // ФИЛЬТР ВЫКЛЮЧЕН  
-prog_char Text_string95[] PROGMEM="Wrna{ bjk~whr| Onlo{ h bngnamnbhr|"; // Чтобы включить Помпы и возобновить 
-prog_char Text_string96[] PROGMEM="p`anrs b oepelemmnl pefhle";         //     работу в переменном режиме 
-prog_char Text_string97[] PROGMEM="p`anrs b qhmupnmmnl pefhle";         //     работу в синхронном режиме
-prog_char Text_string98[] PROGMEM="B{aephre pefhl jmnojni bbepus";      //    Выберите режим кнопкой вверху 
-prog_char Text_string99[] PROGMEM="Feeding Mode";            // Режим Кормления
-prog_char Text_string100[] PROGMEM="THK&RP B[JK^WEM !!";            // ФИЛЬТР ВЫКЛЮЧЕН !!   
-prog_char Text_string101[] PROGMEM="THK&RP ASDER BJK^WEM";              // ФИЛЬТР БУДЕТ ВКЛЮЧЕН
-prog_char Text_string102[] PROGMEM="wepeg:";                            //  через:  00:00 (большой шрифт)
-prog_char Text_string103[] PROGMEM="h bngnamnbkem Oepelemm{i pefhl";    // и возобновлен Переменный режим
-prog_char Text_string104[] PROGMEM="h bngnamnbkem Qhmupnmm{i pefhl";    // и возобновлен Синхронный режим
-prog_char Text_string105[] PROGMEM="<< BACK";                // << НАЗАД (BACK)
-prog_char Text_string106[] PROGMEM=""; // --------------------------------------------------------------- 
-prog_char Text_string107[] PROGMEM="SAVE";                              // СОХРАНИТЬ
-prog_char Text_string108[] PROGMEM="SQR@MNBHRE OPNDNKF. P@ANR[ ONLO";   // УСТАНОВИТЕ ПРОДОЛЖ. РАБОТЫ ПОМП 
-prog_char Text_string109[] PROGMEM="ONLO@ 1";                           // ПОМПА 1
-prog_char Text_string110[] PROGMEM="ONLO@ 2";                           // ПОМПА 2
-prog_char Text_string111[] PROGMEM="Lhmsr";                             // Минут
-prog_char Text_string112[] PROGMEM="Qejsmd";                            // Секунд
-prog_char Text_string113[] PROGMEM=""; // ----------------------------------------------------------------
-prog_char Text_string114[] PROGMEM="QBERNDHNDNB DN:";                        // CВЕТОДИОДОВ ДО:
-prog_char Text_string115[] PROGMEM="JNK-BN ONPVHI   >";                         // КОЛИЧЕСТВО ДОЗ  //Выберите один из режимов работы, B{aephre ndhm hg pefhlnb p`anr{,
-prog_char Text_string116[] PROGMEM="HMREPB@K (w`q{) >";                        // ИНТЕРВАЛ //Либо помпы будут постоянно включены  Khan onlo{ asdsr onqrn$mmn bjk~wem{
-prog_char Text_string117[] PROGMEM="BBEDHRE NAZEL >";                          // ВВЕДИТЕ ОБЪЕМ      "Khan asdsr p`anr`r| b pefhle osk|q`vhh"; // либо будут работать в режиме пульсации
-prog_char Text_string118[] PROGMEM="Qej.";                                   // Сек. "ONLO[ ASDSR BJK^WEM[ ONQRN_MMN";         // ПОМПЫ БУДУТ ВКЛЮЧЕНЫ ПОСТОЯННО 
-prog_char Text_string119[] PROGMEM="NAZEL DN3[ (Lk) >";                        // ОБЪЕМ дозы  
-prog_char Text_string120[] PROGMEM="BPEL_ DN3[";                  // Время работы дозатора     DN3@RNP@ 
-prog_char Text_string121[] PROGMEM="Lk.";                                    // Mл   
-prog_char Text_string122[] PROGMEM="J@KHAPNBJ@";                             // КАЛИБРОВКА //"ONLO[ ASDSR BJK^WEM[ B REWEMHH";    // ПОМПЫ БУДУТ ВКЛЮЧЕНЫ В ТЕЧЕНИИ
-prog_char Text_string123[] PROGMEM="DN3@RNP";                                // ДОЗАТОР  //"ONLO[ ASDSR B[JK^WEM[ B REWEMHH";   // ПОМПЫ БУДУТ ВЫКЛЮЧЕНЫ В ТЕЧЕНИИ
-prog_char Text_string124[] PROGMEM="W@Q[";                                   // ЧАСЫ 
-prog_char Text_string125[] PROGMEM="LHMSR[";                                 // МИНУТЫ
-prog_char Text_string126[] PROGMEM="OPNDNKF.";                               // ПРОДОЛЖ.
-prog_char Text_string127[] PROGMEM="SQR@MNB. RELO.";                         // УСТАНОВ. ТЕМП.   
-prog_char Text_string128[] PROGMEM="BJK.";                                   // ВКЛ.
-prog_char Text_string129[] PROGMEM="Spnbmh";                                 // Уровни
-prog_char Text_string130[] PROGMEM="QNUP@MHR&";                              // СОХРАНИТЬ
-prog_char Text_string131[] PROGMEM="Servo";                                  // Servo
-prog_char Text_string132[] PROGMEM="LHMSR";                                  // МИНУТ 
-prog_char Text_string133[] PROGMEM="ONDQBERJ@ ]JP@M@";                       // ПОДСВЕТКА ЭКРАНА
-prog_char Text_string134[] PROGMEM="RELO.BJK.BEMRHK_RNP@";                   // ТЕМП. ВКЛЮЧЕНИЯ ВЕНТИЛЯТОРА
-prog_char Text_string135[] PROGMEM="@BRN-SLEM&X. _PJNQRH";                   // АВТО-УМЕНЬШ. ЯРКОСТИ
-prog_char Text_string136[] PROGMEM="OPH OEPECPEBE";                          // ПРИ ПЕРЕГРЕВЕ 
-prog_char Text_string137[] PROGMEM="SQR@MNBJH";                              // УСТАНОВКИ
-prog_char Text_string138[] PROGMEM="UP@MHREK_ ]JP@M@";                       // ХРАНИТЕЛЯ ЭКРАНА
-prog_char Text_string139[] PROGMEM="NCP@MHWEMHE LNYMNQRH";                   // ОГРАНИЧЕНИЕ МОЩНОСТИ  
-prog_char Text_string140[] PROGMEM="BEMRHK_RNP NUK@FDEMH_ P@DH@RNP@-1";      // ВЕНТИЛЯТОР ОХЛАЖДЕНИЯ РАДИАТОРА-1 
-prog_char Text_string141[] PROGMEM="BEMRHK_RNP NUK@FDEMH_ P@DH@RNP@-2";      // ВЕНТИЛЯТОР ОХЛАЖДЕНИЯ РАДИАТОРА-2 
-prog_char Text_string142[] PROGMEM="Reloep`rsp` Bjk~wemh$";                  // ТЕМПЕРАТУРА ВКЛЮЧЕНИЯ
-prog_char Text_string143[] PROGMEM="BEKHWHM@ QHCM@K@ BQEU J@M@KNB";          // величина сигнала всех каналов
-prog_char Text_string144[] PROGMEM="(25-50)";                                // (25-50) граница температур
-prog_char Text_string145[] PROGMEM="OPH M@CPEBE P@DH@RNP@";                  // ПРИ НАГРЕВЕ РАДИАТОРА
-prog_char Text_string146[] PROGMEM="DN RELOEP@RSP[:";                        // ДО ТЕМПЕРАТУРЫ:
-prog_char Text_string147[] PROGMEM="SLEM&X@R& _PJNQR&";                      // УМЕНЬШАТЬ ЯРКОСТЬ
-prog_char Text_string148[] PROGMEM="W@Q[ / OSQRNI ]JP@M";                    // ЧАСЫ / ПУСТОЙ ЭКРАН
-prog_char Text_string149[] PROGMEM="@JRHB@VH_";                              // АКТИВАЦИЯ 
-prog_char Text_string150[] PROGMEM="ONQKE:";                                 //   ПОСЛЕ
+ PROGMEM const char Text_string0[] ="BPEL_:";                 // ВРЕМЯ: 
+ PROGMEM const char Text_string1[] ="D@R@:";                  // ДАТА:
+ PROGMEM const char Text_string2[] =""; // ----------------------------------------------------- 
+ PROGMEM const char Text_string3[] ="B TNPL@RE";              // В ФОРМАТЕ (в меню часов) 
+ PROGMEM const char Text_string4[] ="BLANK";                  // BLANK (пустой экран)
+ PROGMEM const char Text_string5[] ="CLOCK";                  // ЧАСЫ (CLOCK)
+ PROGMEM const char Text_string6[] ="Rho }jp`m`";             // Тип экрана
+ PROGMEM const char Text_string7[] ="ONJ@3[B@R& D@RS";        // ПОКАЗЫВАТЬ ДАТУ 
+ PROGMEM const char Text_string8[] ="YES";                    // ДА
+ PROGMEM const char Text_string9[] ="NO";                     // НЕТ
+ PROGMEM const char Text_string10[] ="@.W@Q[";                // А.ЧАСЫ (аналоговые часы)
+ PROGMEM const char Text_string11[] ="V.W@Q[";                // Ц.ЧАСЫ (цифровые часы)
+ PROGMEM const char Text_string12[] ="D@RW.";                 // Датч. D`rw. // ДАТЧ.
+ PROGMEM const char Text_string13[] ="LNMHRNP QNA[RHI";       // МОНИТОР СОБЫТИЙ
+ PROGMEM const char Text_string14[] ="TIME SECTOR";           // СЕКТОР ВРЕМЕНИ
+ PROGMEM const char Text_string15[] ="24HR";                  // 24ч.(формат)
+ PROGMEM const char Text_string16[] ="C";                     // С (цельсий)
+ PROGMEM const char Text_string17[] ="OK";                    // OK
+ PROGMEM const char Text_string18[] ="SQR@M.RELO.";           // УСТАН.ТЕМП.
+ PROGMEM const char Text_string19[] ="Qnup`mhr| Sqr`mnbjh";   // Сохранить Установки  
+ PROGMEM const char Text_string20[] ="3`cpsghr| Sqr`mnbjh";   // Загрузить Установки   
+ PROGMEM const char Text_string21[] ="M@QRPNHR;";             // НАСТРОИТЬ   
+ PROGMEM const char Text_string22[] ="* SOP@BKEMHE @JB@PHSLNL *"; // УПРАВЛЕНИЕ АКВАРИУМОМ  
+ PROGMEM const char Text_string23[] ="_PJNQR& J@M@KNB";       // ЯРКОСТЬ КАНАЛОВ
+ PROGMEM const char Text_string24[] ="T@3@ KSM[";             // ФАЗА ЛУНЫ
+ PROGMEM const char Text_string25[] ="RELOEP@R.";             // ТЕМПЕРАТ. (RELOEP@RSP@)  (reloep.) 
+ PROGMEM const char Text_string26[] =" OFF ";                 // ( OFF )
+ PROGMEM const char Text_string27[] ="BND@:";                 // ВОДА :  ТЕМП.ВОДЫ (RELO BND[:)  
+ PROGMEM const char Text_string28[] ="P@D:1";                 // РАД:1   РАДИАТ Д1 (P@DH@R D1:) 
+ PROGMEM const char Text_string29[] ="P@D:2";                 // РАД:2   РАДИАТ Д2 (P@DH@R D2:)
+ PROGMEM const char Text_string30[] ="Err.";                  // Err. (Ошибка)
+ PROGMEM const char Text_string31[] ="UNKNDHK&MHJ";           // ХОЛОДИЛЬНИК 
+ PROGMEM const char Text_string32[] ="M@CPEB@REK&";           // НАГРЕВАТЕЛЬ 
+ PROGMEM const char Text_string33[] ="ALARM!!";               // ТРЕВОГА ! 
+ PROGMEM const char Text_string34[] ="(DD/LL/CCCC)";          // (ДД/MM/ГГГГ)  (день, месяц, год)
+ PROGMEM const char Text_string35[] ="CP@THJ QBERNBNCN DM_";  // ГРАФИК СВЕТОВОГО ДНЯ
+ PROGMEM const char Text_string36[] =""; // -------------------------------------------------------
+ PROGMEM const char Text_string37[] ="3`d`mm`$ Reloep`rsp`:"; // Заданная Температура  
+ PROGMEM const char Text_string38[] ="Chqrepeghq Reloep`rsp{";// Гистерезис Температуры
+ PROGMEM const char Text_string39[] ="Chqrepeghq Rpebnch";    // Гистерезис Тревоги
+ PROGMEM const char Text_string40[] ="Bpel$";                 // Время       
+ PROGMEM const char Text_string41[] ="Boeped";                // Вперед     
+ PROGMEM const char Text_string42[] ="M`g`d";                 // Назад
+ PROGMEM const char Text_string43[] ="Test in Progress";      // Test in Progress
+ PROGMEM const char Text_string44[] ="TIME";                  // ВРЕМЯ
+ PROGMEM const char Text_string45[] ="SPNBMH B[UNDNB (0-100%)"; // УРОВНИ ВЫХОДОВ (0-100%)
+ PROGMEM const char Text_string46[] ="000";                   // 000 (три нуля)
+ PROGMEM const char Text_string47[] ="R.AEK[I";                 // БЕЛЫЙ
+ PROGMEM const char Text_string48[] ="QHMHI";                 // СИНИЙ
+ PROGMEM const char Text_string49[] ="JP@QM[I";               // КРАСНЫЙ   
+ PROGMEM const char Text_string50[] ="KSM@";                  // ЛУНА
+ PROGMEM const char Text_string51[] ="NP@MFEB[I";             // ОРАНЖЕВЫЙ
+ PROGMEM const char Text_string52[] ="THNKERNB[I";            // ФИОЛЕТОВЫЙ
+ PROGMEM const char Text_string53[] ="U.AEK[I";               // ГОЛУБОЙ   CNKSANI
+ PROGMEM const char Text_string54[] ="GEKEM[I";               // ЗЕЛЕНЫЙ   
+ PROGMEM const char Text_string55[] ="3M@WEMH_ _PJNQRH DK_ AEKNCN J@M@K@";     // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ БЕЛОГО КАНАЛА
+ PROGMEM const char Text_string56[] ="DK_ OEPEUND@ J CP@THJ@L-M@F@R& M@ ]JP@M";// ДЛЯ ПЕРЕХОДА К ГРАФИКАМ-НАЖАТЬ НА ЭКРАН
+ PROGMEM const char Text_string57[] ="3M@WEMH_ _PJNQRH DK_ CNKSANCN J@M@K@";   // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ГОЛУБОГО КАНАЛА
+ PROGMEM const char Text_string58[] ="3M@WEMH_ _PJNQRH DK_ QHMECN J@M@K@";     // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ СИНЕГО КАНАЛА
+ PROGMEM const char Text_string59[] ="3M@WEMH_ _PJNQRH DK_ JP@QMNCN J@M@K@";   // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ КРАСНОГО КАНАЛА
+ PROGMEM const char Text_string60[] ="3M@WEMH_ _PJNQRH DK_ THNKERNBNCN J@M@K@";// ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ФИОЛЕТОВОГО КАНАЛА
+ PROGMEM const char Text_string61[] ="3M@WEMH_ _PJNQRH DK_ NP@MFEBNCN J@M@K@"; // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ОРАНЖЕВОГО КАНАЛА
+ PROGMEM const char Text_string62[] ="3M@WEMH_ _PJNQRH DK_ 3EKEMNCN J@M@K@";   // ЗНАЧЕНИЯ ЯРКОСТИ ДЛЯ ЗЕЛЕНОГО КАНАЛА 
+ PROGMEM const char Text_string63[] ="Lhmhl`k|m`=";           // Минимальная
+ PROGMEM const char Text_string64[] ="L`jqhl`k|m`=";          // Максимальная
+ PROGMEM const char Text_string65[] ="_pjnqr|";               // Яркость (в меню луны)
+ PROGMEM const char Text_string66[] ="MNB@_ KSM@";            // НОВАЯ ЛУНА
+ PROGMEM const char Text_string67[] ="ONKM@_ KSM@";           // ПОЛНАЯ ЛУНА
+ PROGMEM const char Text_string68[] ="B BEPUMEI W@QRH ]JP@M@ B[AP@R&";   //  В ВЕРХНЕЙ ЧАСТИ ЭКРАНА ВЫБРАТЬ 
+ PROGMEM const char Text_string69[] ="K^ANI DBSUW@QNBNI NRPE3NJ BPELEMH";// ЛЮБОЙ ДВУХЧАСОВОЙ ОТРЕЗОК ВРЕМЕНИ
+ PROGMEM const char Text_string70[] ="H SQR@MNBHR& 3M@WEMH_ _PJNQRH";    //  И УСТАНОВИТЬ ЗНАЧЕНИЯ ЯРКОСТИ
+ PROGMEM const char Text_string71[] ="DK_ B[AP@MMNCN J@M@K@";            //      ДЛЯ ВЫБРАННОГО КАНАЛА
+ PROGMEM const char Text_string72[] ="DN3@RNP[";             // ДОЗАТОР УДО
+ PROGMEM const char Text_string73[] ="BND[";                   // ВОДЫ 
+ PROGMEM const char Text_string74[] ="JNPLSXJ@";               // КОРМУШКА
+ PROGMEM const char Text_string75[] ="B[JK^WHR& THK&RP";       // ВЫКЛЮЧИТЬ ФИЛЬТР
+ PROGMEM const char Text_string76[] ="SPNBEM&";         // УРОВЕНЬ // ТЕКУЩИЙ РЕЖИМ: REJSYHI PEFHL: 
+ PROGMEM const char Text_string77[] ="QKHB";          // СЛИВ // НИ ОДИН РЕЖИМ НЕ ВЫБРАН ! "MH NDHM PEFHL ME B[AP@M !"
+ PROGMEM const char Text_string78[] ="SQR@MNBJ@ SPNBM_ PM";  //  B{aephre pefhl p`anr{ onlo rewemh$"; // Выберите режим работы помп течения/ Установка уровня РН
+ PROGMEM const char Text_string79[] ="D@RWHJ@ PM";          //     Переменный или Синхронный Oepelemm{i hkh Qhmupnmm{i
+ PROGMEM const char Text_string80[] ="REJSYEE";         //  Текущее  /   Затем СОХРАНИТЕ Настройки g`rel QNUP@MHRE M`qrpnijh.
+ PROGMEM const char Text_string81[] ="3M@WEMHE"; //Значение/ ПОМПЫ РАБОТАЮТ В ПЕРЕМЕННОМ РЕЖИМЕ(при настройке большой шрифт)ONLO[ P@ANR@^R B OEPELEMMNL PEFHLE
+ PROGMEM const char Text_string82[] ="PM";                       // PH
+ PROGMEM const char Text_string83[] ="hkh m`flhre jmnojs BJK^WHR& ONLO[";  //  или нажмите кнопку ВКЛЮЧИТЬ ПОМПЫ    
+ PROGMEM const char Text_string84[] ="7";                // 7
+ PROGMEM const char Text_string85[] ="10";                // 10 
+ PROGMEM const char Text_string86[] ="BJK^WEM ONQRN_MMN";     // ВКЛЮЧЕНЫ ПОСТОЯННО (кнопка)
+ PROGMEM const char Text_string87[] ="THK&RP";    // ФИЛЬТР
+ PROGMEM const char Text_string88[] ="ON OPHMVHOS";       // ПО ПРИНЦИПУ  
+ PROGMEM const char Text_string89[] ="BJK./ B[JK.";       // ВКЛ./ВЫКЛ.  
+ PROGMEM const char Text_string90[] ="PEFHL OSK&Q@VHH";         // РЕЖИМ ПУЛЬСАЦИИ 
+ PROGMEM const char Text_string91[] ="THK&RP BJK^WEM";          // ФИЛЬТР ВКЛЮЧЕН   
+ PROGMEM const char Text_string92[] ="  THK&RP B[JK^WEM  ";         // ФИЛЬТР ВЫКЛЮЧЕН 
+ PROGMEM const char Text_string93[] ="BJK^WHR& THK&RP";          // ВКЛЮЧИТЬ ФИЛЬТР
+ PROGMEM const char Text_string94[] ="  THK&RP B[JK^WEM  ";          // ФИЛЬТР ВЫКЛЮЧЕН  
+ PROGMEM const char Text_string95[] ="Wrna{ bjk~whr| Onlo{ h bngnamnbhr|"; // Чтобы включить Помпы и возобновить 
+ PROGMEM const char Text_string96[] ="p`anrs b oepelemmnl pefhle";         //     работу в переменном режиме 
+ PROGMEM const char Text_string97[] ="p`anrs b qhmupnmmnl pefhle";         //     работу в синхронном режиме
+ PROGMEM const char Text_string98[] ="B{aephre pefhl jmnojni bbepus";      //    Выберите режим кнопкой вверху 
+ PROGMEM const char Text_string99[] ="Feeding Mode";            // Режим Кормления
+ PROGMEM const char Text_string100[] ="THK&RP B[JK^WEM !!";            // ФИЛЬТР ВЫКЛЮЧЕН !!   
+ PROGMEM const char Text_string101[] ="THK&RP ASDER BJK^WEM";              // ФИЛЬТР БУДЕТ ВКЛЮЧЕН
+ PROGMEM const char Text_string102[] ="wepeg:";                            //  через:  00:00 (большой шрифт)
+ PROGMEM const char Text_string103[] ="h bngnamnbkem Oepelemm{i pefhl";    // и возобновлен Переменный режим
+ PROGMEM const char Text_string104[] ="h bngnamnbkem Qhmupnmm{i pefhl";    // и возобновлен Синхронный режим
+ PROGMEM const char Text_string105[] ="<< BACK";                // << НАЗАД (BACK)
+ PROGMEM const char Text_string106[] =""; // --------------------------------------------------------------- 
+ PROGMEM const char Text_string107[] ="SAVE";                              // СОХРАНИТЬ
+ PROGMEM const char Text_string108[] ="SQR@MNBHRE OPNDNKF. P@ANR[ ONLO";   // УСТАНОВИТЕ ПРОДОЛЖ. РАБОТЫ ПОМП 
+ PROGMEM const char Text_string109[] ="ONLO@ 1";                           // ПОМПА 1
+ PROGMEM const char Text_string110[] ="ONLO@ 2";                           // ПОМПА 2
+ PROGMEM const char Text_string111[] ="Lhmsr";                             // Минут
+ PROGMEM const char Text_string112[] ="Qejsmd";                            // Секунд
+ PROGMEM const char Text_string113[] =""; // ----------------------------------------------------------------
+ PROGMEM const char Text_string114[] ="QBERNDHNDNB DN:";                        // CВЕТОДИОДОВ ДО:
+ PROGMEM const char Text_string115[] ="JNK-BN ONPVHI   >";                         // КОЛИЧЕСТВО ДОЗ  //Выберите один из режимов работы, B{aephre ndhm hg pefhlnb p`anr{,
+ PROGMEM const char Text_string116[] ="HMREPB@K (w`q{) >";                        // ИНТЕРВАЛ //Либо помпы будут постоянно включены  Khan onlo{ asdsr onqrn$mmn bjk~wem{
+ PROGMEM const char Text_string117[] ="BBEDHRE NAZEL >";                          // ВВЕДИТЕ ОБЪЕМ      "Khan asdsr p`anr`r| b pefhle osk|q`vhh"; // либо будут работать в режиме пульсации
+ PROGMEM const char Text_string118[] ="Qej.";                                   // Сек. "ONLO[ ASDSR BJK^WEM[ ONQRN_MMN";         // ПОМПЫ БУДУТ ВКЛЮЧЕНЫ ПОСТОЯННО 
+ PROGMEM const char Text_string119[] ="NAZEL DN3[ (Lk) >";                        // ОБЪЕМ дозы  
+ PROGMEM const char Text_string120[] ="BPEL_ DN3[";                  // Время работы дозатора     DN3@RNP@ 
+ PROGMEM const char Text_string121[] ="Lk.";                                    // Mл   
+ PROGMEM const char Text_string122[] ="J@KHAPNBJ@";                             // КАЛИБРОВКА //"ONLO[ ASDSR BJK^WEM[ B REWEMHH";    // ПОМПЫ БУДУТ ВКЛЮЧЕНЫ В ТЕЧЕНИИ
+ PROGMEM const char Text_string123[] ="DN3@RNP";                                // ДОЗАТОР  //"ONLO[ ASDSR B[JK^WEM[ B REWEMHH";   // ПОМПЫ БУДУТ ВЫКЛЮЧЕНЫ В ТЕЧЕНИИ
+ PROGMEM const char Text_string124[] ="W@Q[";                                   // ЧАСЫ 
+ PROGMEM const char Text_string125[] ="LHMSR[";                                 // МИНУТЫ
+ PROGMEM const char Text_string126[] ="OPNDNKF.";                               // ПРОДОЛЖ.
+ PROGMEM const char Text_string127[] ="SQR@MNB. RELO.";                         // УСТАНОВ. ТЕМП.   
+ PROGMEM const char Text_string128[] ="BJK.";                                   // ВКЛ.
+ PROGMEM const char Text_string129[] ="Spnbmh";                                 // Уровни
+ PROGMEM const char Text_string130[] ="QNUP@MHR&";                              // СОХРАНИТЬ
+ PROGMEM const char Text_string131[] ="Servo";                                  // Servo
+ PROGMEM const char Text_string132[] ="LHMSR";                                  // МИНУТ 
+ PROGMEM const char Text_string133[] ="ONDQBERJ@ ]JP@M@";                       // ПОДСВЕТКА ЭКРАНА
+ PROGMEM const char Text_string134[] ="RELO.BJK.BEMRHK_RNP@";                   // ТЕМП. ВКЛЮЧЕНИЯ ВЕНТИЛЯТОРА
+ PROGMEM const char Text_string135[] ="@BRN-SLEM&X. _PJNQRH";                   // АВТО-УМЕНЬШ. ЯРКОСТИ
+ PROGMEM const char Text_string136[] ="OPH OEPECPEBE";                          // ПРИ ПЕРЕГРЕВЕ 
+ PROGMEM const char Text_string137[] ="SQR@MNBJH";                              // УСТАНОВКИ
+ PROGMEM const char Text_string138[] ="UP@MHREK_ ]JP@M@";                       // ХРАНИТЕЛЯ ЭКРАНА
+ PROGMEM const char Text_string139[] ="NCP@MHWEMHE LNYMNQRH";                   // ОГРАНИЧЕНИЕ МОЩНОСТИ  
+ PROGMEM const char Text_string140[] ="BEMRHK_RNP NUK@FDEMH_ P@DH@RNP@-1";      // ВЕНТИЛЯТОР ОХЛАЖДЕНИЯ РАДИАТОРА-1 
+ PROGMEM const char Text_string141[] ="BEMRHK_RNP NUK@FDEMH_ P@DH@RNP@-2";      // ВЕНТИЛЯТОР ОХЛАЖДЕНИЯ РАДИАТОРА-2 
+ PROGMEM const char Text_string142[] ="Reloep`rsp` Bjk~wemh$";                  // ТЕМПЕРАТУРА ВКЛЮЧЕНИЯ
+ PROGMEM const char Text_string143[] ="BEKHWHM@ QHCM@K@ BQEU J@M@KNB";          // величина сигнала всех каналов
+ PROGMEM const char Text_string144[] ="(25-50)";                                // (25-50) граница температур
+ PROGMEM const char Text_string145[] ="OPH M@CPEBE P@DH@RNP@";                  // ПРИ НАГРЕВЕ РАДИАТОРА
+ PROGMEM const char Text_string146[] ="DN RELOEP@RSP[:";                        // ДО ТЕМПЕРАТУРЫ:
+ PROGMEM const char Text_string147[] ="SLEM&X@R& _PJNQR&";                      // УМЕНЬШАТЬ ЯРКОСТЬ
+ PROGMEM const char Text_string148[] ="W@Q[ / OSQRNI ]JP@M";                    // ЧАСЫ / ПУСТОЙ ЭКРАН
+ PROGMEM const char Text_string149[] ="@JRHB@VH_";                              // АКТИВАЦИЯ 
+ PROGMEM const char Text_string150[] ="ONQKE:";                                 //   ПОСЛЕ
 # ifdef freshwater
-prog_char Text_string151[] PROGMEM="@]P@VH_";                               // АЭРАЦИЯ  (меню ручное управление)    
-prog_char Text_string152[] PROGMEM="QN2";                                   // СО2 
-prog_char Text_string153[] PROGMEM="THK&RP";                                // ФИЛЬТР
-prog_char Text_string154[] PROGMEM="ST K@LO@";                              // УФ ЛАМПА   
-prog_char Text_string155[] PROGMEM="DNKHB";                                 // ДОЛИВ
+ PROGMEM const char Text_string151[] ="@]P@VH_";                               // АЭРАЦИЯ  (меню ручное управление)    
+ PROGMEM const char Text_string152[] ="QN2";                                   // СО2 
+ PROGMEM const char Text_string153[] ="THK&RP";                                // ФИЛЬТР
+ PROGMEM const char Text_string154[] ="ST K@LO@";                              // УФ ЛАМПА   
+ PROGMEM const char Text_string155[] ="DNKHB";                                 // ДОЛИВ
 #endif
 # ifdef seawater
-prog_char Text_string151[] PROGMEM="R@ILEP-1";                               // Таймер 1  (меню ручное управление)    
-prog_char Text_string152[] PROGMEM="R@ILEP-2";                               // Таймер 2  
-prog_char Text_string153[] PROGMEM="R@ILEP-3";                               // Таймер 3 
-prog_char Text_string154[] PROGMEM="R@ILEP-4";                               // Таймер 4    
-prog_char Text_string155[] PROGMEM="R@ILEP-5";                               // Таймер 5 
+ PROGMEM const char Text_string151[] ="R@ILEP-1";                               // Таймер 1  (меню ручное управление)    
+ PROGMEM const char Text_string152[] ="R@ILEP-2";                               // Таймер 2  
+ PROGMEM const char Text_string153[] ="R@ILEP-3";                               // Таймер 3 
+ PROGMEM const char Text_string154[] ="R@ILEP-4";                               // Таймер 4    
+ PROGMEM const char Text_string155[] ="R@ILEP-5";                               // Таймер 5 
 #endif
-prog_char Text_string156[] PROGMEM="AUTO";                      // АВТО
-prog_char Text_string157[] PROGMEM="RELOEP@RSP@ BND[ 3@ QSRJH"; // ТЕМПЕРАТУРА ВОДЫ ЗА СУТКИ  
-prog_char Text_string158[] PROGMEM="M`w`kn dbhf.";              // Начало движ.
-prog_char Text_string159[] PROGMEM="Jnmev dbhf.";               // Конец движ.
-prog_char Text_string160[] PROGMEM="P`anw`$ gnm`";              // надпись "рабочая зона"
-prog_char Text_string161[] PROGMEM="Qjnpnqr| onbnpnr`";         // скорость поворота
-prog_char Text_string162[] PROGMEM="Scnk onbnpnr`";             // шаг(угол) поворота 
-prog_char Text_string163[] PROGMEM="O`sg` lefds onbnpnr`lh";    // Пауза между поворотами
-prog_char Text_string164[] PROGMEM="Onknfemhe oph b{jk.";        // Положение при выкл.
-prog_char Text_string165[] PROGMEM="M`qrpnijh bjk/b{jk b R@ILEPE 3"; // настройки вкл/выкл в таймере 3
-prog_char Text_string166[] PROGMEM="(24HR)";                    // (24HR)
-prog_char Text_string167[] PROGMEM="SQR@MNBJ@ 3BSJNBNI RPEBNCH";// УСТАНОВКА ЗВУКОВОЙ ТРЕВОГИ  
-prog_char Text_string168[] PROGMEM="(Ndmnbpelemm`$ p`anr` onlo)"; //(Одновременная работа помп)  
-prog_char Text_string169[] PROGMEM="R@ILEP[";                    // Таймеры
-prog_char Text_string170[] PROGMEM="Changed!";                  // Изменено ! (меню часов)
-prog_char Text_string171[] PROGMEM="B{j";                       // Вык (выключено)
-prog_char Text_string172[] PROGMEM="Bjk";                       // Вкл (включено)
-prog_char Text_string173[] PROGMEM=""; //----------------------------------------------------
-prog_char Text_string174[] PROGMEM="3`ohq| m`qrpnej m` tkex j`prs "; // Запись настроек на флеш карту
-prog_char Text_string175[] PROGMEM="M`qrpnijh sqoexmn qnup`mem{.";   // Настройки успешно сохранены 
-prog_char Text_string176[] PROGMEM="Nrjk~w.";                   // Отключ.  Отключить
-prog_char Text_string177[] PROGMEM="D.Bnd{";                    // Д.Воды (Датчик в аквариуме)
-prog_char Text_string178[] PROGMEM="D.P`d:1";                   // Д.Рад:1 (Радиатор Датчик 1)
-prog_char Text_string179[] PROGMEM="D.P`d:2";                   // Д.Рад:2 (Радиатор Датчик 2)
-prog_char Text_string180[] PROGMEM="ONJNPLHR& QEIW@Q";          // ПОКОРМИТЬ СЕЙЧАС
-prog_char Text_string181[] PROGMEM="JNPLKEMHE";                 // КОРМЛЕНИЕ
-prog_char Text_string182[] PROGMEM="BPEL_";                     // ВРЕМЯ
-prog_char Text_string183[] PROGMEM="ME SQR@MNBKEMN";            // НЕ УСТАНОВЛЕНО
-prog_char Text_string184[] PROGMEM="B[JK.";                     // ВЫКЛ.
+ PROGMEM const char Text_string156[] ="AUTO";                      // АВТО
+ PROGMEM const char Text_string157[] ="RELOEP@RSP@ BND[ 3@ QSRJH"; // ТЕМПЕРАТУРА ВОДЫ ЗА СУТКИ  
+ PROGMEM const char Text_string158[] ="M`w`kn dbhf.";              // Начало движ.
+ PROGMEM const char Text_string159[] ="Jnmev dbhf.";               // Конец движ.
+ PROGMEM const char Text_string160[] ="P`anw`$ gnm`";              // надпись "рабочая зона"
+ PROGMEM const char Text_string161[] ="Qjnpnqr| onbnpnr`";         // скорость поворота
+ PROGMEM const char Text_string162[] ="Scnk onbnpnr`";             // шаг(угол) поворота 
+ PROGMEM const char Text_string163[] ="O`sg` lefds onbnpnr`lh";    // Пауза между поворотами
+ PROGMEM const char Text_string164[] ="Onknfemhe oph b{jk.";        // Положение при выкл.
+ PROGMEM const char Text_string165[] ="M`qrpnijh bjk/b{jk b R@ILEPE 3"; // настройки вкл/выкл в таймере 3
+ PROGMEM const char Text_string166[] ="(24HR)";                    // (24HR)
+ PROGMEM const char Text_string167[] ="SQR@MNBJ@ 3BSJNBNI RPEBNCH";// УСТАНОВКА ЗВУКОВОЙ ТРЕВОГИ  
+ PROGMEM const char Text_string168[] ="(Ndmnbpelemm`$ p`anr` onlo)"; //(Одновременная работа помп)  
+ PROGMEM const char Text_string169[] ="R@ILEP[";                    // Таймеры
+ PROGMEM const char Text_string170[] ="Changed!";                  // Изменено ! (меню часов)
+ PROGMEM const char Text_string171[] ="B{j";                       // Вык (выключено)
+ PROGMEM const char Text_string172[] ="Bjk";                       // Вкл (включено)
+ PROGMEM const char Text_string173[] =""; //----------------------------------------------------
+ PROGMEM const char Text_string174[] ="3`ohq| m`qrpnej m` tkex j`prs "; // Запись настроек на флеш карту
+ PROGMEM const char Text_string175[] ="M`qrpnijh sqoexmn qnup`mem{.";   // Настройки успешно сохранены 
+ PROGMEM const char Text_string176[] ="Nrjk~w.";                   // Отключ.  Отключить
+ PROGMEM const char Text_string177[] ="D.Bnd{";                    // Д.Воды (Датчик в аквариуме)
+ PROGMEM const char Text_string178[] ="D.P`d:1";                   // Д.Рад:1 (Радиатор Датчик 1)
+ PROGMEM const char Text_string179[] ="D.P`d:2";                   // Д.Рад:2 (Радиатор Датчик 2)
+ PROGMEM const char Text_string180[] ="ONJNPLHR& QEIW@Q";          // ПОКОРМИТЬ СЕЙЧАС
+ PROGMEM const char Text_string181[] ="JNPLKEMHE";                 // КОРМЛЕНИЕ
+ PROGMEM const char Text_string182[] ="BPEL_";                     // ВРЕМЯ
+ PROGMEM const char Text_string183[] ="ME SQR@MNBKEMN";            // НЕ УСТАНОВЛЕНО
+ PROGMEM const char Text_string184[] ="B[JK.";                     // ВЫКЛ.
 
-char* Text_table[]PROGMEM={   
+const PROGMEM char* const PROGMEM Text_table[]  ={
   Text_string0, Text_string1, Text_string2, Text_string3, Text_string4, Text_string5, Text_string6, Text_string7,
   Text_string8, Text_string9, Text_string10, Text_string11, Text_string12, Text_string13, Text_string14, Text_string15,
   Text_string16, Text_string17, Text_string18, Text_string19, Text_string20, Text_string21, Text_string22, Text_string23,
@@ -857,7 +868,7 @@ char* Text_table[]PROGMEM={
 
 char buffer[40];
 int PrintStringIndex;
-char* print_text[] PROGMEM = { 
+char* print_text[]  = { 
 "<< LEM^",           // print_text[0]  МЕНЮ
 "NRLEM@",            // print_text[1]  ОТМЕНА
 "<< M@G@D",          // print_text[2]  НАЗАД
@@ -3039,7 +3050,7 @@ void printHeader(){      // верхний баннер (желтая рамка
     myGLCD.setBackColor(255, 255, 0);
     myGLCD.fillRect (1, 0, 318, 13);
     myGLCD.setColor(255, 0, 0);      // цвет красный 
-    myGLCD.drawRect(1, 0, 318, 12);  // рамка     
+    myGLCD.drawRect(1, 0, 318, 13);  // рамка     
     myGLCD.setColor(0, 0, 0);           // шрифт текста черный
     strcpy_P(buffer, (char*)pgm_read_word_near(&(Header_Text_table[PrintStringIndex]))); 
     myGLCD.print(buffer, CENTER, 3 ); } // текст 4
@@ -3057,15 +3068,15 @@ void printFramework(){ // timer
      myGLCD.drawRoundRect(149, 38, 168, 66);}  // кайма вокруг номера канала
 	  
 void printPicture(){ // картики стрелок таймеров
-     myGLCD.drawBitmap(20, 44, 48, 31, pgm_get_far_address(up), 1);    // cтрелка вверх часы включения
-     myGLCD.drawBitmap(20, 149, 48, 31, pgm_get_far_address(down), 1); // cтрелка вниз часы включения  
-     myGLCD.drawBitmap(89, 44, 48, 31, pgm_get_far_address(up), 1);    // cтрелка вверх часы включения
-     myGLCD.drawBitmap(89, 149, 48, 31, pgm_get_far_address(down), 1); // cтрелка вниз часы включения 
+     myGLCD.drawBitmap(20, 44, 48, 31, up, 1);    // cтрелка вверх часы включения
+     myGLCD.drawBitmap(20, 149, 48, 31, down, 1); // cтрелка вниз часы включения  
+     myGLCD.drawBitmap(89, 44, 48, 31, up, 1);    // cтрелка вверх часы включения
+     myGLCD.drawBitmap(89, 149, 48, 31, down, 1); // cтрелка вниз часы включения 
      
-     myGLCD.drawBitmap(185, 44, 48, 31, pgm_get_far_address(up), 1);     // cтрелка вверх часы выключения
-     myGLCD.drawBitmap(185, 149, 48, 31, pgm_get_far_address(down), 1);  // cтрелка вниз часы выключения 
-     myGLCD.drawBitmap(255, 44, 48, 31, pgm_get_far_address(up), 1);     // cтрелка вверх часы выключения
-     myGLCD.drawBitmap(255, 149, 48, 31, pgm_get_far_address(down), 1);} // cтрелка вниз часы выключения 
+     myGLCD.drawBitmap(185, 44, 48, 31, up, 1);     // cтрелка вверх часы выключения
+     myGLCD.drawBitmap(185, 149, 48, 31, down, 1);  // cтрелка вниз часы выключения 
+     myGLCD.drawBitmap(255, 44, 48, 31, up, 1);     // cтрелка вверх часы выключения
+     myGLCD.drawBitmap(255, 149, 48, 31, down, 1);} // cтрелка вниз часы выключения 
 /*     
 void printPicturedos(){ // картики стрелок дозаторов
      myGLCD.drawBitmap(valUP[0]+1, valUP[1]+1, 48, 31, pgm_get_far_address(up), 1);    // cтрелка вверх 
@@ -3338,17 +3349,21 @@ void TimeSaver(boolean refreshAll=false){  // хранитель экрана
 
        myGLCD.setColor(127, 255, 212);                                                                                        //          ЦВЕТ ЧАСОВ НА СКРИНСЕЙВЕРЕ
        myGLCD.setBackColor(0, 0, 0);  
-       myGLCD.setFont(SevenSegNumFontPlus); // большой шрифт 
+       myGLCD.setFont(SevenSegNumFont); // большой шрифт 
        if (RTC.hour < 10) {
             myGLCD.printNumI(0,80,65);
             myGLCD.printNumI(RTC.hour,115, 65);  
                } else myGLCD.printNumI(RTC.hour,80, 65);
        
-       myGLCD.print(":",CENTER, 65);
+      // myGLCD.print(":",CENTER, 65);
+       myGLCD.fillRoundRect(156, 75, 164, 83);
+       myGLCD.fillRoundRect(156, 93, 164, 101);
+       
+       
        
        if (RTC.minute < 10) {
-         myGLCD.print("0",175,65);
-            myGLCD.printNumI(RTC.minute,210, 65);
+         myGLCD.printNumI(0,175,65);
+            myGLCD.printNumI(RTC.minute,208, 65);
        }else myGLCD.printNumI(RTC.minute,175, 65);
            
 if (setScreensaverDOWonOff==1){             // Date and Date
@@ -3802,7 +3817,7 @@ if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer && avgMeasuredPH > 3
            
      float lunarCycle = moonPhase(RTC.year, RTC.month, RTC.day); // get a value for the lunar cycle 
 
-     myGLCD.drawBitmap(194, 29, 53, 53, MoonPic, 1);  // new  картинка луны
+     myGLCD.drawBitmap(194, 29, 53, 53, First_Quarter, 1);  // new  картинка луны
 
      myGLCD.drawBitmap(271, 76, 45, 9, preset, 1);    // картинка  пресеты
   
@@ -4731,7 +4746,7 @@ if (COLOR==7) { for (byte i=0; i<96; i++) tled[i] = gled[i];  // Green
     myGLCD.print(buffer, 36, 20);     // Минимальная
          strcpy_P(buffer, (char*)pgm_read_word_near(&(Text_table[65]))); 
     myGLCD.print(buffer, 52, 32);     //   Яркость    
-    myGLCD.drawBitmap(52, 47, 53, 53, pgm_get_far_address(First_Quarter), 1);
+    myGLCD.drawBitmap(52, 47, 53, 53, First_Quarter, 1);
 
     myGLCD.print(print_text[176], 46, 122);       // (0--100)(48, 122) 255  0...100 %"
     myGLCD.print(print_text[60], 20, 177);  // -1       
@@ -4740,7 +4755,7 @@ if (COLOR==7) { for (byte i=0; i<96; i++) tled[i] = gled[i];  // Green
     myGLCD.print(buffer, 195, 20);      // Максимальная
          strcpy_P(buffer, (char*)pgm_read_word_near(&(Text_table[65]))); 
     myGLCD.print(buffer, 214, 32);      //   Яркость 
-    myGLCD.drawBitmap(215, 48, 53, 53, pgm_get_far_address(Full_Moon), 1);
+    myGLCD.drawBitmap(215, 48, 53, 53, Full_Moon, 1);
   
     myGLCD.print(print_text[176], 207, 122);   // (0--100)(209, 122) 255  0...100 %"
     myGLCD.print(print_text[60], 182, 177);    // -1      
@@ -5615,28 +5630,33 @@ void light(){ // ------------- Срабатывание таймеров
 // 1 - канал таймера АЭРАЦИИ
      if (timer1Status<2 && prog1==0){    
           if (on1<off1){if (timer>=on1 && timer<off1){timer1Status=1;} else {timer1Status=0;}}
-          if (on1>off1){if (timer<on1 && timer>=off1){timer1Status=0;} else {timer1Status=1;}}}
+          if (on1>off1){if (timer<on1 && timer>=off1){timer1Status=0;} else {timer1Status=1;}}
+        }
 // 2 - канал таймера подачи СО2            
      if (timer2Status<2 && prog2==0){ 
           if (on2<off2){
             #ifdef PH_sensor_I2C  // Если подключен датчик PH учитываются его показания
           if ((timer>=on2 && timer<off2) && (avgMeasuredPH > SetvalPH)){timer2Status=1;} else {timer2Status=0;}}         
-            #endif                // иначе просто таймер
+            #else                // иначе просто таймер
           if (timer>=on2 && timer<off2){timer2Status=1;} else {timer2Status=0;}}
-          if (on2>off2){if (timer<on2 && timer>=off2){timer2Status=0;} else {timer2Status=1;}}}
+            #endif
+          if (on2>off2){if (timer<on2 && timer>=off2){timer2Status=0;} else {timer2Status=1;}}
+        }
 // 3 - канал таймера ФИЛЬТРА            
      if (timer3Status<2 && prog3==0){ 
-          if (on3<off3){if ((timer>=on3 && timer<off3) && (FeedWaveCtrl_1==false) && 
-        (FeedWaveCtrl_2==false) && (FeedWaveCtrl_3==false) && (FeedWaveCtrl_4==false)){timer3Status=1;} else {timer3Status=0;}}
-          if (on3>off3){if (timer<on3 && timer>=off3){timer3Status=0;} else {timer3Status=1;}}}
+          if (on3<off3){if (timer>=on3 && timer<off3){timer3Status=1;} else {timer3Status=0;}}
+          if (on3>off3){if (timer<on3 && timer>=off3){timer3Status=0;} else {timer3Status=1;}}
+        }
 // 4 - канал таймера УФ ЛАМПЫ             
      if (timer4Status<2 && prog4==0){ 
           if (on4<off4){if (timer>=on4 && timer<off4 && timer3Status==1){timer4Status=1;} else {timer4Status=0;}}
-          if (on4>off4){if (timer<on4 && timer>=off4){timer4Status=0;} else {timer4Status=1;}}}
+          if (on4>off4){if (timer<on4 && timer>=off4){timer4Status=0;} else {timer4Status=1;}}
+        }
 // 5 - канал таймера ДОЛИВА             
      if (timer5Status<2 && prog5==0){ 
           if (on5<off5){if (timer>=on5 && timer<off5){timer5Status=1;} else {timer5Status=0;}}
-          if (on5>off5){if (timer<on5 && timer>=off5){timer5Status=0;} else {timer5Status=1;}}}
+          if (on5>off5){if (timer<on5 && timer>=off5){timer5Status=0;} else {timer5Status=1;}}
+        }
 #endif         
           
 # ifdef seawater          
@@ -5676,7 +5696,9 @@ void light(){ // ------------- Срабатывание таймеров
           if (timer2Status==3){digitalWrite(timer2,LOW);}  // OFF
 // Timer 3 фильтр
             if (timer3Status==0){digitalWrite(timer3,LOW);}  // Auto OFF
-            if (timer3Status==1){digitalWrite(timer3,HIGH);} // Auto ON
+            if ((timer3Status==1) && (FeedWaveCtrl_1==false) && 
+        (FeedWaveCtrl_2==false) && (FeedWaveCtrl_3==false) && 
+        (FeedWaveCtrl_4==false)) {digitalWrite(timer3,HIGH);} // Auto ON
             if (timer3Status==2){digitalWrite(timer3,HIGH);} // ON
             if (timer3Status==3){digitalWrite(timer3,LOW);}  // OFF
            
@@ -7294,19 +7316,19 @@ void autoFeederScreen()
 void feedingTimeOutput(){
   if ((FEEDTime1==1) && (feedFish1H==RTC.hour) && (feedFish1M==RTC.minute) && (RTC.second>=0 && RTC.second<5)){      
        fiveTillBackOn1=0; FeedWaveCtrl_1=true;
-       digitalWrite(autoFeeder, HIGH);digitalWrite(timer3,LOW);}     
+       digitalWrite(autoFeeder, HIGH);}     
        else {
               if ((FEEDTime2==1) && (feedFish2H==RTC.hour) && (feedFish2M==RTC.minute) && (RTC.second>=0 && RTC.second<5)){     
               fiveTillBackOn2=0; FeedWaveCtrl_2=true;      
-              digitalWrite(autoFeeder, HIGH);digitalWrite(timer3,LOW);}
+              digitalWrite(autoFeeder, HIGH);}
               else {
                     if ((FEEDTime3==1) && (feedFish3H==RTC.hour) && (feedFish3M==RTC.minute) && (RTC.second>=0 && RTC.second<5)){     
                     fiveTillBackOn3=0; FeedWaveCtrl_3=true;     
-                    digitalWrite(autoFeeder, HIGH);digitalWrite(timer3,LOW);}
+                    digitalWrite(autoFeeder, HIGH);}
                     else {                
                           if ((FEEDTime4==1) && (feedFish4H==RTC.hour) && (feedFish4M==RTC.minute) && (RTC.second>=0 && RTC.second<5)){     
                           fiveTillBackOn4=0; FeedWaveCtrl_4=true;     
-                          digitalWrite(autoFeeder, HIGH);digitalWrite(timer3,LOW);}
+                          digitalWrite(autoFeeder, HIGH);}
                           else {digitalWrite(autoFeeder, LOW);}}}}
         
         
@@ -7687,7 +7709,7 @@ void doscalibrateScreen(){
       
       myGLCD.setColor(255, 255, 0);
       myGLCD.drawRoundRect(5,40,315,150);
-      myGLCD.drawRoundRect(dos4b[0]+5, dos4b[1]-4, dos4b[2]+52, dos4b[3]-4); //КНОПКА КАЛИБРОВКИ   
+      myGLCD.drawRoundRect(dos4b[0]+5, dos4b[1]-6, dos4b[2]+52, dos4b[3]-4); //КНОПКА КАЛИБРОВКИ   
       setFont(SMALL, 0, 255, 0, 0, 0, 0);
       myGLCD.setFont(RusFont3);  
       strcpy_P(buffer, (char*)pgm_read_word_near(&(Text_table[120]))); 
@@ -7956,6 +7978,7 @@ Serial.println ("       ");
 void dosingTimeOutput(){
      RTC.getTime();
      sec=(RTC.minute*60)+RTC.second;
+     
      
    if ((sec>=sec1)&&(Doscalibrate1==1)){
      Doscalibrate1=0; digitalWrite(pump1, LOW);
@@ -8937,8 +8960,8 @@ if ((y>=174+2)&&(y<=187-2)&&(colorLEDtest==true)&&(bitRead(GlobalStatus1Byte,2)=
           dozCal4 = PlusMinusCountI (true, true, calUP[0], calUP[1], 100, 1, 999, 1, dozCal4);     // калибровка 10 сек
          if (PlsMnsPress == true) { PlsMnsPress = false;}dosSec4();}     
 
-         if ((x>=dos4b[0]+5)&&(x<=dos4b[2]+52)&&(y>=dos4b[1]-4)&&(y<=dos4b[3]-4)){
-          waitForIt(dos4b[0]+5, dos4b[1]-4, dos4b[2]+52, dos4b[3]-4);
+         if ((x>=dos4b[0]+5)&&(x<=dos4b[2]+52)&&(y>=dos4b[1]-6)&&(y<=dos4b[3]-4)){
+          waitForIt(dos4b[0]+5, dos4b[1]-6, dos4b[2]+52, dos4b[3]-4);
           doscalibrate();
 }
       
@@ -10403,77 +10426,8 @@ if ((y>=174+2)&&(y<=187-2)&&(colorLEDtest==true)&&(bitRead(GlobalStatus1Byte,2)=
    
 void setup(void){  // ============ SETUP
   Serial.begin(9600); // Setup usb serial connection to computer
-//  Wire.begin();
-//Setup Bluetooth serial connection to android
-/*  bluetooth.begin(9600); // 115200
-  bluetooth.print("$$$");
-  delay(100);
-  bluetooth.println("U,9600,N");
-  bluetooth.begin(9600);  */
-/*  pinMode(RxD, INPUT);
-  pinMode(TxD, OUTPUT);
-  setupBlueToothConnection();
-    
-  //  Serial.println("\n[memCheck2]");
-  //  Serial.println(freeRam()); // Проверка оставшейся свободной памяти
-  
-   //  message.attach(messageReady);
-   
-// используемые пины (тач-панель 6,5,4,3,2) (led 7,8,9,10,11,12,13) 
-//  таймер      пин
-// Timer 0 - pin 4          Pin4-0C0B  // Таймер 0  не менять, нарушится время Millis, Delay
-// Timer 1 - pin 11,12,13   Pin11-0C1A,Pin12-0C1B,Pin13-0C1C
-// Timer 2 - pin 9,10       Pin9-0C2B, Pin10-OC2A
-// Timer 3 - pin 2,3,5      Pin2-0C3B, Pin3-0C3C, Pin5-0C3A
-// Timer 4 - pin 6,7,8      Pin6-0C4A, Pin7-0C4B, Pin8-0C4C
-// Timer 5 - pin 44,45,46   Pin44-OCR5C, Pin45-OCR5B, Pin46-OCR5A 
-                          
-// Перевод таймеров в 10bit, где n это номер таймера  
-// TCCRnA |= (1 << WGMn0); 
-// TCCRnA |= (1 << WGMn1); 
-// TCCRnB &= ~(1 << WGMn3); 
-// TCCRnB |= (1 << WGMn2); 
 
-// Для контактов 3, 9, 10, 11  ( 0C3C, 0C2B, OC2A, OC1A )    
-// TCCRnB = xxxxx001, частота 32kHz
-// TCCRnB = xxxxx010, частота 4 kHz
-// TCCRnB = xxxxx011, частота 500Hz (по умолчанию с загрузчиком Diecimila)
-// TCCRnB = xxxxx100, частота 125Hz
-// TCCRnB = xxxxx101, частота 31.25 Hz
-
-////////////////////////// 10бит ///////////////////////////////////
-// This is using the 16-bit timer.  10-bit pwm
-/* TCCR1A = B00000010; // mode 14Fast PWM  / Timer 1 pin 11,12,13
- TCCR1B = B00011010; // 8no prescalering
- 
- TCCR2A = B00000010; // mode 14Fast PWM  / Timer 2 pin 9,10
- TCCR2B = B00011010; // 8no prescalering
- 
- TCCR4A = B00000010; // mode 14Fast PWM  / Timer 4 pin 6,7,8
- TCCR4B = B00011010; // 8no prescalering
- 
-//================ установить частоту шим 4khz на таймерах =================== 
-  //TCCR1B = (TCCR1B & 0xF8) | 0x02; // 3926.25 hz  pin 12, 13  
-  //TCCR2B = (TCCR2B & 0xF8) | 0x02; // 3926.25 hz  pin 9
-  //TCCR3B = (TCCR3B & 0xF8) | 0x02; // 3926.25 hz  pin 2,3,5
-  //TCCR4B = (TCCR4B & 0xF8) | 0x02; // 3926.25 hz  pin 6,7,8
-  //TCCR5B = (TCCR5B & 0xF8) | 0x05; // 30hz  pin 44, 45, 46
-  
-//==================== установка требуемой частоты ===========================  
-//  TCCR1B = (TCCR1B & 0xF8) | PWM_FRQ_Value;     // pin 12, 13  
-//  TCCR2B = (TCCR2B & 0xF8) | PWM_FRQ_ValueT2;   // pin 10
-  //TCCR3B = (TCCR3B & 0xF8) | PWM_FRQ_Value;     // pin 2,3,5
-//  TCCR4B = (TCCR4B & 0xF8) | PWM_FRQ_Value;     // pin 6,7,8
- */
   TCCR5B = (TCCR5B & 0xF8) | PWM_FRQ_Value_Fan; // 30hz  pin 44, 45, 46 for FANs
-/*
-  TCCR4A = B00000010;		// mode 14Fast PWM timer4
-  TCCR4B = B00011010;		// 8no prescalering
-  TCCR3A = B00000010;		// mode 14Fast PWM timer3
-  TCCR3B = B00011010;		// 8no prescalering
-  TCCR1A = B00000010;		// mode 14Fast PWM timer 1
-  TCCR1B = B00011010;		// 8no prescalering
-*/  
 
 // set timer mode 14 - fast PWM
   TCCR4A = B00000010;		// mode 14Fast PWM timer4   
@@ -10516,10 +10470,7 @@ void setup(void){  // ============ SETUP
   sbi_mix( DDRH , 4 ); 
   cbi_mix( PORTH, 5 ); // Timer4, port 8
   sbi_mix( DDRH , 5 ); 
-  
-//============================================================================== 
-// TCCR5A = B00101011;  // Fast PWM change at OCR5A (Timer 5 - pins 44 & 45)
-// TCCR5B = B10001;     // No Prescalering (Timer 5 - pins 44 & 45)
+
 
   pinMode(ledPinWhite, OUTPUT);   // white
   pinMode(ledPinBlue, OUTPUT);    // blue
@@ -10599,62 +10550,11 @@ void setup(void){  // ============ SETUP
    
  calculateStartTime();  // calculate SUNRISE time 
  calculateStopTime();   // calculate SUNSET time
- 
-
-//--------ON OFF LED Analog Driver ----------
-// if ((min_cnt/15 >= StartTime-1) && (min_cnt/15 <= StopTime))
-//	 {digitalWrite(PowerSwitch1, HIGH);}    // ON driver before StartTime - 15min
-//    else {digitalWrite(PowerSwitch1, LOW);}     // OFF driver before StartTime 
-  
-// wdt_enable(WDTO_2S);         // Watchdog timer 2 s
-// currentTime = millis();      // считываем время, прошедшее с момента запуска программы 
-// loopTime = currentTime; 
-
-// PORTD.0=1;//1 -> D0 //  зажигает светодиод
-// DDRD = 0xFF; // порт D установлен как выход
-// PORTB &= ~(1<<5);  // устанавливаем низкий уровень на выводе PB5 (pin 11)
-// PORTB = 0; // установить на портах B низкое состояние
-// PORTH = 0; // установить на портах H низкое состояние
- 
-// Ethernet.begin(mac, ip); // Инициализирует работу с библиотекой Ethernet и устанавливает сетевые настройки. 
-// Serial.begin(9600);      // delay(400);  Serial.println("connecting...");
-// server.begin(); }        // запускаем сервер
 
  periode = 50000;        // time in ms from 0-255 or 0-255 
  starttime = millis(); } // change nothing below here
  
 void loop(void){ // --------------------------------- loop
-
- // pumpPWM(); // цикл для помп в режиме шим
-  
-//--------- в цикле для риф ангел контроллера помп ---------- 
-  //ReefAngel.PWM.SetDaylight( ReefCrestMode(80) );
-
-/*  char recvChar;
- // while(1){
-    if(blueToothSerial.available()){  //check if there's any data sent from the remote bluetooth shield 
-      recvChar = blueToothSerial.read();
-      Serial.print(recvChar);
-  if(recvChar == '1'){ dispScreen=0; clearScreen(); mainScreen(true);    //digitalWrite(13, LOW);
-        blueToothSerial.print("Lamp OFF\r\n"); }
-      
-  if(recvChar == '2'){ digitalWrite(13, HIGH);
-        blueToothSerial.print("Lamp ON\r\n"); } // обратная связь - текстовое сообщение о включении/выключении
-    
-  if(Serial.available()){//check if there's any data sent from the local serial terminal, you can add the other applications here
-      recvChar  = Serial.read();
-      blueToothSerial.print(recvChar); } }  
-
-//Read from bluetooth and write to usb serial
-/*  if(bluetooth.available()){
-    char toSend = (char)bluetooth.read();
-    Serial.print(toSend); }
-//Read from usb serial to bluetooth
-  if(Serial.available()){
-    char toSend = (char)Serial.read();
-    bluetooth.print(toSend); } */
-                            
- // while ( Serial.available()){ message.process(Serial.read());} //  message
  
   if (aclock == 1){ analogClock(); }      // cкринсейв аналоговые часы (секундная стрелка) 
   
@@ -10686,14 +10586,7 @@ if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer){
      setFont(SMALL, 30, 30, 30, 30, 30, 30);  
       myGLCD.fillRect(0,227,215,238);
       myGLCD.print(F("                          "), 2, 227); } } }
-/*      
-     //RTC.getTime();   
-if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer){
-  if (PumpTstate){ setFont(LARGE, 0, 0, 255, 0, 0, 0);
-      myGLCD.print(F("***"), 269, 56); }    // волна вверх                        
-  if (PumpBstate){ setFont(LARGE, 0, 0, 255, 0, 0, 0);
-      myGLCD.print(F("'''"), 269, 56); } } } // волна вниз
-*/
+
   if (currentMillis - previousMillisFive > 5000){ // проверка времени, температуры и уровней каналов, каждые 5 сек  
                       previousMillisFive = currentMillis;  
                             RTC.getTime();
@@ -10713,13 +10606,7 @@ if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer){
       #ifdef PH_sensor_I2C
      CheckPH();
       #endif
-      
-//------------------- ON OFF LED Analog Driver --------------------------
-//       if  ((GlobalStatus2Byte & 0x0F) == 0) { 
-//         if ((min_cnt/15 >= StartTime-1) && (min_cnt/15 <= StopTime))
-//		{digitalWrite(PowerSwitch1, HIGH);}			   // ON driver before StartTime - 15min myGLCD.printNumI(MIN_O, 125, 149); 
-//	   else {digitalWrite(PowerSwitch1, LOW);}}			   // OFF driver before StartTime      
-      
+    
 //------------ Отключить пресеты за 45 минут до завершения светового дня -------------------
      if (((GlobalStatus2Byte & 0x0F) !=0) && (min_cnt/15 == StopTime-3 )){   // !=0 if preset is ON     
 	   GlobalStatus2Byte = (GlobalStatus2Byte & 0xF0);                   // clear flags Preset1..Preset4  
