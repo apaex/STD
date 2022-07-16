@@ -7555,6 +7555,14 @@ void CheckPH(){
   avgRoomTempC/=sampleSize;
   avgPHVolts/=sampleSize;
 
+#else
+  avgPHVolts = getPHVoltage();
+  avgMeasuredPH = pH(avgPHVolts);
+
+  Serial.print("pH= ");
+  Serial.println(avgMeasuredPH);
+#endif
+
 
   
   setFont(SMALL, 0, 255, 255, 0, 0, 0);
