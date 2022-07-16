@@ -40,7 +40,8 @@ boolean RECOM_RCD = true;               // For Mean Well drivers change "true" t
  
 //#define Aqua_shield_v3        // Раскоментировать при использовании АКВАшилда V3 ,
 
-//#define PH_sensor_I2C         // Раскоментировать при наличии датчика РН на шине I2C
+#define PH_sensor_I2C         // Раскоментировать при наличии датчика РН на шине I2C
+#define PH_sensor_ADC A0      // Раскоментировать при наличии датчика РН с аналоговым модулем (калибровка на модуле)
 
 //**********************ВЫБОР МОРЕ - ПРЕСНЯК ****************************************************
 #define freshwater              // Раскоментировать для пресняка
@@ -7490,11 +7491,42 @@ void SetPH(){
   
 }
 /*******************************ИЗМЕРЕНИЕ PH ****************************************/
- 
 
+unsigned sum(unsigned *buf, unsigned count)
+{
+  unsigned r = 0;
+  for(int i=0; i<count; ++i)
+    r += buf[i];
+  return r;
+}
+
+float avg(unsigned *buf, unsigned count)
+{
+  return (float)sum(buf, count) / count;
+}
+
+float pH(float voltage) {
+  return 7 + ((2.5 - voltage) / 0.18);
+  //return 3.5*voltage;
+}
+
+#define PH_BUF_SIZE 10
+
+float getPHVoltage()
+{ 
+  static unsigned buf[PH_BUF_SIZE];
+  static unsigned char index = 0;
+
+  buf[index] = analogRead(PH_sensor_ADC);
+  if (++index >= PH_BUF_SIZE)
+    index = 0;
+
+  return avg(buf, PH_BUF_SIZE) *5./1024.; //convert the analog into millivolt
+}
 
 void CheckPH(){
-  
+
+#ifndef PH_sensor_ADC
   int x;
   for(x=0;x< sampleSize;x++)
   {
@@ -7522,10 +7554,13 @@ void CheckPH(){
   avgRoomTemperatureCompensatedMeasuredPH/=sampleSize;
   avgRoomTempC/=sampleSize;
   avgPHVolts/=sampleSize;
+
+
+  
   setFont(SMALL, 0, 255, 255, 0, 0, 0);
   if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer && avgMeasuredPH > 3 && avgMeasuredPH < 10){
-         myGLCD.setFont(BigFont);
-         myGLCD.printNumF(avgMeasuredPH,1, 116, 110);
+//         myGLCD.setFont(BigFont);
+         myGLCD.printNumF(avgMeasuredPH,1, 122, 110);
   }
   else{  if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer)
       myGLCD.drawBitmap(128, 108, 24, 24, clos, 1);    // картинка  крестик 
@@ -10615,4 +10650,3 @@ if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer){
   if ((dispScreen == 0) && (screenSaverCounter<setScreenSaverTimer)){aclock = 0; mainScreen(); }}  // в основном цикле
 
 /********************************** END OF MAIN LOOP *********************************/
-
