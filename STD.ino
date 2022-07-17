@@ -7559,16 +7559,16 @@ void CheckPH(){
   avgPHVolts = getPHVoltage();
   avgMeasuredPH = pH(avgPHVolts);
 
-  Serial.print("pH= ");
-  Serial.println(avgMeasuredPH);
+//  Serial.print("pH= ");
+//  Serial.println(avgMeasuredPH);
 #endif
 
 
   
   setFont(SMALL, 0, 255, 255, 0, 0, 0);
   if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer && avgMeasuredPH > 3 && avgMeasuredPH < 10){
-//         myGLCD.setFont(BigFont);
-         myGLCD.printNumF(avgMeasuredPH,1, 122, 110);
+         myGLCD.setFont(BigFont);
+         myGLCD.printNumF(avgMeasuredPH,1, 116, 110);
   }
   else{  if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer)
       myGLCD.drawBitmap(128, 108, 24, 24, clos, 1);    // картинка  крестик 
