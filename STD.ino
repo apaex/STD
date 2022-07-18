@@ -7516,12 +7516,15 @@ float getPHVoltage()
 { 
   static unsigned buf[PH_BUF_SIZE];
   static unsigned char index = 0;
+  static unsigned char count = 0;
 
   buf[index] = analogRead(PH_sensor_ADC);
   if (++index >= PH_BUF_SIZE)
     index = 0;
+  if (count < PH_BUF_SIZE)
+    ++count;
 
-  return avg(buf, PH_BUF_SIZE) *5./1024.; //convert the analog into millivolt
+  return avg(buf, count) *5./1024.; //convert the analog into millivolt
 }
 
 void CheckPH(){
@@ -7558,12 +7561,12 @@ void CheckPH(){
 #else
   avgPHVolts = getPHVoltage();
   avgMeasuredPH = pH(avgPHVolts);
-
-//  Serial.print("pH= ");
-//  Serial.println(avgMeasuredPH);
 #endif
 
-
+  Serial.print("avgPHVolts= ");
+  Serial.print(avgPHVolts);
+  Serial.print(", pH= ");
+  Serial.println(avgMeasuredPH);
   
   setFont(SMALL, 0, 255, 255, 0, 0, 0);
   if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer && avgMeasuredPH > 3 && avgMeasuredPH < 10){
