@@ -7559,7 +7559,7 @@ void CheckPH(){
   avgPHVolts/=sampleSize;
 
 #else
-  avgPHVolts = getPHVoltage();
+  avgPHVolts = getPHVoltage() - 0.03;
   avgMeasuredPH = pH(avgPHVolts);
 #endif
 
@@ -10472,6 +10472,7 @@ if ((y>=174+2)&&(y<=187-2)&&(colorLEDtest==true)&&(bitRead(GlobalStatus1Byte,2)=
    
 void setup(void){  // ============ SETUP
   Serial.begin(9600); // Setup usb serial connection to computer
+  delay(100); Serial.println("Starting...");
 
   TCCR5B = (TCCR5B & 0xF8) | PWM_FRQ_Value_Fan; // 30hz  pin 44, 45, 46 for FANs
 
