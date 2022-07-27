@@ -27,7 +27,6 @@
 //#include <SdFatUtil.h>
 
 #include "aquarium.h"
-using namespace aquarium;
 #define dataSerial Serial1
 
 SimpleTimer timemillis;      // There must be one global SimpleTimer object.
@@ -10611,27 +10610,30 @@ void setup(void){  // ============ SETUP
 
 void UART_receiver()
 {
+  using namespace aquarium;
+
   if (dataSerial.available())
   {
-    DataContainer data;
-    data.setPH(avgMeasuredPH);
-    data.setLight(100);
-    data.setLevel(100);
-    data.setTemperature(tempW);
-    data.setCRC();
+    CommandContainer command;
+    int iCount = dataSerial.readBytes((uint8_t)&command, sizeof(command));
 
-    uint8_t command[AQUARIUM_REQUEST_LENGTH + 1];
-    int iCount = dataSerial.readBytes(command, AQUARIUM_REQUEST_LENGTH + 1);
-
-    if (command[0] == 0xff)
+    switch (command.command)
     {
-      if (command[AQUARIUM_REQUEST_LENGTH] == AQUARIUM_checksum(command, AQUARIUM_REQUEST_LENGTH))
-      {
-        dataSerial.write((uint8_t *)&data, AQUARIUM_RESPONSE_LENGTH);
-        dataSerial.flush();
-      }
-      else
-        Serial.println("AQUARIUM Checksum doesn't match");
+      case AQUARIUM_COMMAND_GET_PPM:
+        if (command.checkCRC())
+        {
+          DataContainer data;
+          data.setPH(avgMeasuredPH);
+          data.setLight(100);
+          data.setLevel(100);
+          data.setTemperature(tempW);
+          data.setCRC();
+
+          dataSerial.write((uint8_t *)&data, sizeof(data));
+          dataSerial.flush();
+        }
+        else
+          Serial.println("AQUARIUM Checksum doesn't match");
 
       //serialPrintArray("COMMAND: ", (char *)command, iCount);
       //serialPrintArray("DATA: ", (char *)&data, AQUARIUM_RESPONSE_LENGTH);

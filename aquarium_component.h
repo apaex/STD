@@ -32,8 +32,12 @@ namespace esphome
 
 			void update() override
 			{
+				CommandContainer command;
+				command.command = AQUARIUM_COMMAND_GET_PPM;
+				command.setCRC();
+
 				DataContainer response;
-				if (!this->AQUARIUM_write_command_(AQUARIUM_COMMAND_GET_PPM, (uint8_t *)&response))
+				if (!this->AQUARIUM_write_command_((uint8_t *)&command, (uint8_t *)&response))
 				{
 					ESP_LOGW(TAG, "Reading data from AQUARIUM failed!");
 					this->status_set_warning();

@@ -2,12 +2,21 @@
 
 namespace aquarium {
 
-//static const uint8_t AQUARIUM_COMMAND_GET_PPM[] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const uint8_t AQUARIUM_COMMAND_GET_PPM[] = {0xFF};
-static const uint8_t AQUARIUM_REQUEST_LENGTH = sizeof(AQUARIUM_COMMAND_GET_PPM);
+static const uint8_t AQUARIUM_COMMAND_GET_PPM = 0xFF;
 static const uint16_t AQUARIUM_PREAMBLE = 0x86FF;
 
 uint8_t AQUARIUM_checksum(const uint8_t *command, uint8_t count);
+
+typedef struct __attribute__((__packed__)) 
+{
+	uint8_t command;
+	uint8_t crc;
+
+    void setCRC() { crc = AQUARIUM_checksum((uint8_t *)this, sizeof(this)-1); }
+    bool checkCRC() { return crc == AQUARIUM_checksum((uint8_t *)this, sizeof(this)-1); }
+} CommandContainer;
+
+static const uint8_t AQUARIUM_REQUEST_LENGTH = sizeof(CommandContainer);
 
 typedef struct __attribute__((__packed__)) 
 {
