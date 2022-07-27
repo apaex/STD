@@ -26,6 +26,10 @@
 #include <SdFat.h>
 //#include <SdFatUtil.h>
 
+#include "aquarium.h"
+using namespace aquarium;
+#define dataSerial Serial1
+
 SimpleTimer timemillis;      // There must be one global SimpleTimer object.
 
 //Default Controller Settings
@@ -10599,7 +10603,41 @@ void setup(void){  // ============ SETUP
  calculateStopTime();   // calculate SUNSET time
 
  periode = 50000;        // time in ms from 0-255 or 0-255 
- starttime = millis(); } // change nothing below here
+ starttime = millis(); 
+
+ dataSerial.begin(9600); 
+} // change nothing below here
+
+
+void UART_receiver()
+{
+  if (dataSerial.available())
+  {
+    DataContainer data;
+    data.setPH(avgMeasuredPH);
+    data.setLight(100);
+    data.setLevel(100);
+    data.setTemperature(tempW);
+    data.setCRC();
+
+    uint8_t command[AQUARIUM_REQUEST_LENGTH + 1];
+    int iCount = dataSerial.readBytes(command, AQUARIUM_REQUEST_LENGTH + 1);
+
+    if (command[0] == 0xff)
+    {
+      if (command[AQUARIUM_REQUEST_LENGTH] == AQUARIUM_checksum(command, AQUARIUM_REQUEST_LENGTH))
+      {
+        dataSerial.write((uint8_t *)&data, AQUARIUM_RESPONSE_LENGTH);
+        dataSerial.flush();
+      }
+      else
+        Serial.println("AQUARIUM Checksum doesn't match");
+
+      //serialPrintArray("COMMAND: ", (char *)command, iCount);
+      //serialPrintArray("DATA: ", (char *)&data, AQUARIUM_RESPONSE_LENGTH);
+    }
+  }  
+}
  
 void loop(void){ // --------------------------------- loop
  
@@ -10653,7 +10691,8 @@ if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer){
       #ifdef PH_sensor_I2C
      CheckPH();
       #endif
-    
+      UART_receiver();
+      
 //------------ Отключить пресеты за 45 минут до завершения светового дня -------------------
      if (((GlobalStatus2Byte & 0x0F) !=0) && (min_cnt/15 == StopTime-3 )){   // !=0 if preset is ON     
 	   GlobalStatus2Byte = (GlobalStatus2Byte & 0xF0);                   // clear flags Preset1..Preset4  
