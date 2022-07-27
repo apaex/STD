@@ -1,0 +1,85 @@
+esphome:
+  name: aquarium
+  platform: ESP8266
+  board: nodemcuv2
+  includes:
+    - aquarium.h
+    - aquarium_component.h
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: !secret ap_ssid
+    password: !secret ap_password
+
+captive_portal:
+
+logger:
+  level: DEBUG
+  esp8266_store_log_strings_in_flash: false
+
+#api:
+#  password: !secret api_password
+
+mqtt:
+  broker: home.radio-pvs.ru
+  username: apaex
+  password: if5uv7HL&^OI86igl
+
+ota:
+  password: !secret ota_password
+
+web_server:
+  port: 80
+  version: 1
+
+
+status_led:
+  pin:
+    number: D4
+    inverted: no
+
+uart:
+  id: uart_bus
+  tx_pin: D0
+  rx_pin: D1
+  baud_rate: 9600
+  
+sensor:
+- platform: wifi_signal
+  name: "Aquarium WiFi Signal"
+  update_interval: 60s
+
+- platform: custom
+  lambda: |-    
+    auto aquarium = new esphome::aquarium::AquariumComponent(id(uart_bus));
+    App.register_component(aquarium);
+    return {aquarium->pH_sensor, aquarium->light_sensor, aquarium->level_sensor, aquarium->temperature_sensor};
+
+  sensors:
+  - name: "Aquarium pH"
+    device_class: "aqi"  
+    icon: mdi:ph
+    accuracy_decimals: 1
+
+  - name: "Aquarium Illuminance"
+    device_class: "illuminance"  
+    unit_of_measurement: lx
+    accuracy_decimals: 1
+    
+  - name: "Aquarium Water Level"
+    device_class: "humidity"  
+    unit_of_measurement: "%"
+    icon: mdi:hydraulic-oil-level
+    accuracy_decimals: 1
+    
+  - name: "Aquarium Temperature"
+    device_class: "temperature"
+    unit_of_measurement: °C
+    accuracy_decimals: 1
+
+
+
+
