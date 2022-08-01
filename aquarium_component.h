@@ -30,11 +30,24 @@ namespace esphome
 			{
 			}
 
+			void printData(const uint8_t* data, uint8_t size)
+			{
+				char buff[80];
+				for (int i = 0; i < size; ++i) 
+				{
+					uint8_t d = data[i];
+					sprintf(buff + i * 3, "%02X  ", d);
+				}
+				ESP_LOGD(TAG, "%s", buff);
+			}
+
 			void update() override
 			{
 				CommandContainer command;
 				command.command = AQUARIUM_COMMAND_GET_PPM;
 				command.setCRC();
+
+				//printData((uint8_t *)&command, AQUARIUM_REQUEST_LENGTH);
 
 				DataContainer response;
 				if (!this->AQUARIUM_write_command_((uint8_t *)&command, (uint8_t *)&response))
@@ -43,15 +56,10 @@ namespace esphome
 					this->status_set_warning();
 					return;
 				}
-/*
-				char buff[80];
-				for (int i = 0; i < AQUARIUM_RESPONSE_LENGTH; ++i) 
-				{
-					uint8_t d = ((uint8_t *)&response)[i];
-					sprintf(buff + i * 3, "%02X  ", d);
-				}
-				ESP_LOGW(TAG, "%s", buff);
-*/
+
+				//printData((uint8_t *)&response, AQUARIUM_RESPONSE_LENGTH);
+
+
 				if (!response.checkSign())
 				{
 					ESP_LOGW(TAG, "Invalid preamble from AQUARIUM!");
@@ -97,7 +105,6 @@ namespace esphome
 				while (this->available())
 					this->read();
 				this->write_array(command, AQUARIUM_REQUEST_LENGTH);
-				this->write_byte(AQUARIUM_checksum(command, AQUARIUM_REQUEST_LENGTH));
 				this->flush();
 
 				if (response == nullptr)

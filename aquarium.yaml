@@ -17,8 +17,8 @@ wifi:
 captive_portal:
 
 logger:
-  level: DEBUG
-  esp8266_store_log_strings_in_flash: false
+#  level: DEBUG
+#  esp8266_store_log_strings_in_flash: false
 
 #api:
 #  password: !secret api_password
@@ -60,7 +60,7 @@ sensor:
 
   sensors:
   - name: "Aquarium pH"
-    device_class: "aqi"  
+    unit_of_measurement: ppm
     icon: mdi:ph
     accuracy_decimals: 1
 

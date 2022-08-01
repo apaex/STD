@@ -12,8 +12,8 @@ typedef struct __attribute__((__packed__))
 	uint8_t command;
 	uint8_t crc;
 
-    void setCRC() { crc = AQUARIUM_checksum((uint8_t *)this, sizeof(this)-1); }
-    bool checkCRC() { return crc == AQUARIUM_checksum((uint8_t *)this, sizeof(this)-1); }
+    void setCRC() { crc = AQUARIUM_checksum((uint8_t *)this, sizeof(*this)-1); }
+    bool checkCRC() { return crc == AQUARIUM_checksum((uint8_t *)this, sizeof(*this)-1); }
 } CommandContainer;
 
 static const uint8_t AQUARIUM_REQUEST_LENGTH = sizeof(CommandContainer);
@@ -28,7 +28,7 @@ typedef struct __attribute__((__packed__))
 	uint8_t crc;
 
 private:
-    uint8_t pack(float v, float scale, float offs)    {        return uint8_t((v - offs) * scale) ;    }
+    uint8_t pack(float v, float scale, float offs)    {        return (uint8_t)round((v - offs) * scale) ;    }
     float unpack(uint8_t v, float scale, float offs)  {        return float(v) / scale + offs;        }
 
 public:
@@ -44,8 +44,8 @@ public:
 
     void setSign() { sign = AQUARIUM_PREAMBLE; }
     bool checkSign() { return sign == AQUARIUM_PREAMBLE; }
-    void setCRC() { setSign(); crc = AQUARIUM_checksum((uint8_t *)this, sizeof(this)-1); }
-    bool checkCRC() { return crc == AQUARIUM_checksum((uint8_t *)this, sizeof(this)-1); }
+    void setCRC() { setSign(); crc = AQUARIUM_checksum((uint8_t *)this, sizeof(*this)-1); }
+    bool checkCRC() { return crc == AQUARIUM_checksum((uint8_t *)this, sizeof(*this)-1); }
 
 } DataContainer;
 

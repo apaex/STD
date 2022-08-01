@@ -26,8 +26,10 @@
 #include <SdFat.h>
 //#include <SdFatUtil.h>
 
+//#include <SoftwareSerial.h>
 #include "aquarium.h"
-#define dataSerial Serial1
+//SoftwareSerial dataSerial(15,14);
+#define dataSerial Serial3
 
 SimpleTimer timemillis;      // There must be one global SimpleTimer object.
 
@@ -10605,24 +10607,38 @@ void setup(void){  // ============ SETUP
  starttime = millis(); 
 
  dataSerial.begin(9600); 
+ Serial2.begin(115200);
+ 
 } // change nothing below here
 
+void printData(const char *px, const uint8_t* data, uint8_t size)
+{
+  char buff[80];
+  for (int i = 0; i < size; ++i) 
+  {
+    uint8_t d = data[i];
+    sprintf(buff + i * 3, "%02X  ", d);
+  }
+  Serial.print(px);
+  Serial.println(buff);
+}
 
 void UART_receiver()
 {
+  
   using namespace aquarium;
-
   if (dataSerial.available())
   {
     CommandContainer command;
-    int iCount = dataSerial.readBytes((uint8_t)&command, sizeof(command));
+    DataContainer data;
+    int iCount = dataSerial.readBytes((uint8_t *)&command, sizeof(command));
 
     switch (command.command)
     {
       case AQUARIUM_COMMAND_GET_PPM:
         if (command.checkCRC())
         {
-          DataContainer data;
+
           data.setPH(avgMeasuredPH);
           data.setLight(100);
           data.setLevel(100);
@@ -10633,16 +10649,24 @@ void UART_receiver()
           dataSerial.flush();
         }
         else
-          Serial.println("AQUARIUM Checksum doesn't match");
+          Serial.println("AQUARIUM Command checksum doesn't match");
 
-      //serialPrintArray("COMMAND: ", (char *)command, iCount);
-      //serialPrintArray("DATA: ", (char *)&data, AQUARIUM_RESPONSE_LENGTH);
+//      printData("COMMAND: ", (char *)&command, iCount);
+//      printData("DATA: ", (char *)&data, AQUARIUM_RESPONSE_LENGTH);
     }
-  }  
+  }
+
+
+  while (Serial2.available()) {
+    int inByte = Serial2.read();
+    Serial.write(inByte);
+  }
 }
  
 void loop(void){ // --------------------------------- loop
- 
+  UART_receiver();
+
+
   if (aclock == 1){ analogClock(); }      // cкринсейв аналоговые часы (секундная стрелка) 
   
  
@@ -10693,7 +10717,6 @@ if (dispScreen==0 && screenSaverCounter<setScreenSaverTimer){
       #ifdef PH_sensor_I2C
      CheckPH();
       #endif
-      UART_receiver();
       
 //------------ Отключить пресеты за 45 минут до завершения светового дня -------------------
      if (((GlobalStatus2Byte & 0x0F) !=0) && (min_cnt/15 == StopTime-3 )){   // !=0 if preset is ON     
