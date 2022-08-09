@@ -25,10 +25,12 @@
 #include <SdFat.h>
 //#include <SdFatUtil.h>
 
-//#include <SoftwareSerial.h>
+#include "Serial_printf.h"
 #include "aquarium.h"
 // SoftwareSerial dataSerial(15,14);
 #define dataSerial Serial3
+#define ILLUMINANCE_LEVEL_1 50      // порог внешней освещенности в %, после которого начинает затемняться светильник
+#define ILLUMINANCE_LEVEL_2 70      // порог внешней освещенности в %, после которого погасает светильник
 
 SimpleTimer timemillis; // There must be one global SimpleTimer object.
 
@@ -340,6 +342,8 @@ float calibrationTempC = 20;
 double phVolt;
 
 double voltsPerPH;
+
+float extIlluminanceLevelPer =0; // уровень внешнего освещения в процентах
 
 double realPHVolt;
 double phUnits;
@@ -3431,6 +3435,7 @@ void LED_levelo_output()
     HOT_LEDs();
   }                 //
   Soft_Start_Led(); // increase led brigtness after start programm during 50sec
+  CorrectLedFromLightSensor(); // зависимость от датчика света
 
   // Проверка отключен ли канал LED
   // check channel status ON/OFF
@@ -3985,6 +3990,36 @@ void Soft_Start_Led()
     oLed_out = PercentSoftStart * oLed_out;
     gled_out = PercentSoftStart * gled_out;
     PercentSoftStart += 0.1;
+  }
+}
+
+
+
+// получаем освещенность
+void ReadIlluminanceSensor()
+{
+  uint16_t adc = analogRead(SensLight);
+  extIlluminanceLevelPer = adc / 1024. * 100.;
+
+//  Serial_printf(Serial, "Illuminance_ADC = %dmV, %f%%\n", uint16_t(adc / 1024. * 5000.), extIlluminanceLevelPer);
+}
+
+// корректируем яркость светильника по датчику освещенности
+void CorrectLedFromLightSensor()
+{
+  ReadIlluminanceSensor();
+
+  if (extIlluminanceLevelPer > ILLUMINANCE_LEVEL_1)  
+  {
+    float k = (extIlluminanceLevelPer < ILLUMINANCE_LEVEL_2) ? (extIlluminanceLevelPer - ILLUMINANCE_LEVEL_2) / (ILLUMINANCE_LEVEL_1 - ILLUMINANCE_LEVEL_2) : 0;
+
+    wled_out *= k;
+    bled_out *= k;
+    rbled_out *= k;
+    rled_out *= k;
+    uvled_out *= k;
+    oLed_out *= k;
+    gled_out *= k;
   }
 }
 
@@ -11242,7 +11277,7 @@ float avg(unsigned *buf, unsigned count)
 
 float pH(float voltage)
 {
-  return 7 + ((2.5 - voltage) / 0.18);
+  return 7 + ((2.5 - voltage - 0.03) / 0.18);
   // return 3.5*voltage;
 }
 
@@ -11254,7 +11289,11 @@ float getPHVoltage()
   static unsigned char index = 0;
   static unsigned char count = 0;
 
-  buf[index] = analogRead(PH_sensor_ADC);
+  uint16_t adc = analogRead(PH_sensor_ADC);
+//  Serial_printf(Serial, "PH_ADC = %dmV, pH = %f\n", uint16_t(adc / 1024. * 5000.), pH(adc / 1024. * 5.));
+
+  buf[index] = adc;
+
   if (++index >= PH_BUF_SIZE)
     index = 0;
   if (count < PH_BUF_SIZE)
@@ -11294,15 +11333,15 @@ void CheckPH()
   avgPHVolts /= sampleSize;
 
 #else
-  avgPHVolts = getPHVoltage() - 0.03;
+  avgPHVolts = getPHVoltage();
   avgMeasuredPH = pH(avgPHVolts);
 #endif
-
+/*
   Serial.print("avgPHVolts= ");
   Serial.print(avgPHVolts);
   Serial.print(", pH= ");
   Serial.println(avgMeasuredPH);
-
+*/
   setFont(SMALL, 0, 255, 255, 0, 0, 0);
   if (dispScreen == 0 && screenSaverCounter < setScreenSaverTimer && avgMeasuredPH > 3 && avgMeasuredPH < 10)
   {
@@ -17270,7 +17309,7 @@ void UART_receiver()
       {
 
         data.setPH(avgMeasuredPH);
-        data.setLight(100);
+        data.setLight(extIlluminanceLevelPer);
         data.setLevel(100);
         data.setTemperature(tempW);
         data.setCRC();
