@@ -27,10 +27,9 @@
 
 #include "Serial_printf.h"
 #include "aquarium.h"
-// SoftwareSerial dataSerial(15,14);
 #define dataSerial Serial3
-#define ILLUMINANCE_LEVEL_1 50      // порог внешней освещенности в %, после которого начинает затемняться светильник
-#define ILLUMINANCE_LEVEL_2 70      // порог внешней освещенности в %, после которого погасает светильник
+#define ILLUMINANCE_LEVEL_1 50 // порог внешней освещенности в %, после которого начинает затемняться светильник
+#define ILLUMINANCE_LEVEL_2 70 // порог внешней освещенности в %, после которого погасает светильник
 
 SimpleTimer timemillis; // There must be one global SimpleTimer object.
 
@@ -343,7 +342,7 @@ double phVolt;
 
 double voltsPerPH;
 
-float extIlluminanceLevelPer =0; // уровень внешнего освещения в процентах
+float extIlluminanceLevelPer = 0; // уровень внешнего освещения в процентах
 
 double realPHVolt;
 double phUnits;
@@ -3433,8 +3432,8 @@ void LED_levelo_output()
   if (setDimLEDsOnOff == 1)
   {
     HOT_LEDs();
-  }                 //
-  Soft_Start_Led(); // increase led brigtness after start programm during 50sec
+  }                            //
+  Soft_Start_Led();            // increase led brigtness after start programm during 50sec
   CorrectLedFromLightSensor(); // зависимость от датчика света
 
   // Проверка отключен ли канал LED
@@ -3993,15 +3992,13 @@ void Soft_Start_Led()
   }
 }
 
-
-
 // получаем освещенность
 void ReadIlluminanceSensor()
 {
   uint16_t adc = analogRead(SensLight);
   extIlluminanceLevelPer = adc / 1024. * 100.;
 
-//  Serial_printf(Serial, "Illuminance_ADC = %dmV, %f%%\n", uint16_t(adc / 1024. * 5000.), extIlluminanceLevelPer);
+  //  Serial_printf(Serial, "Illuminance_ADC = %dmV, %f%%\n", uint16_t(adc / 1024. * 5000.), extIlluminanceLevelPer);
 }
 
 // корректируем яркость светильника по датчику освещенности
@@ -4009,7 +4006,7 @@ void CorrectLedFromLightSensor()
 {
   ReadIlluminanceSensor();
 
-  if (extIlluminanceLevelPer > ILLUMINANCE_LEVEL_1)  
+  if (extIlluminanceLevelPer > ILLUMINANCE_LEVEL_1)
   {
     float k = (extIlluminanceLevelPer < ILLUMINANCE_LEVEL_2) ? (extIlluminanceLevelPer - ILLUMINANCE_LEVEL_2) / (ILLUMINANCE_LEVEL_1 - ILLUMINANCE_LEVEL_2) : 0;
 
@@ -11290,7 +11287,7 @@ float getPHVoltage()
   static unsigned char count = 0;
 
   uint16_t adc = analogRead(PH_sensor_ADC);
-//  Serial_printf(Serial, "PH_ADC = %dmV, pH = %f\n", uint16_t(adc / 1024. * 5000.), pH(adc / 1024. * 5.));
+  //  Serial_printf(Serial, "PH_ADC = %dmV, pH = %f\n", uint16_t(adc / 1024. * 5000.), pH(adc / 1024. * 5.));
 
   buf[index] = adc;
 
@@ -11336,12 +11333,12 @@ void CheckPH()
   avgPHVolts = getPHVoltage();
   avgMeasuredPH = pH(avgPHVolts);
 #endif
-/*
-  Serial.print("avgPHVolts= ");
-  Serial.print(avgPHVolts);
-  Serial.print(", pH= ");
-  Serial.println(avgMeasuredPH);
-*/
+  /*
+    Serial.print("avgPHVolts= ");
+    Serial.print(avgPHVolts);
+    Serial.print(", pH= ");
+    Serial.println(avgMeasuredPH);
+  */
   setFont(SMALL, 0, 255, 255, 0, 0, 0);
   if (dispScreen == 0 && screenSaverCounter < setScreenSaverTimer && avgMeasuredPH > 3 && avgMeasuredPH < 10)
   {
@@ -16491,9 +16488,7 @@ void processMyTouch()
         ReadLCDbright();
         LCDbrigh();
       }
-      else
-
-          if ((x >= 165) && (x <= 311) && (y >= 61) && (y <= 89))
+      else if ((x >= 165) && (x <= 311) && (y >= 61) && (y <= 89))
       { // сохранить настройки
         waitForIt(165, 61, 311, 89);
         LCDbright = tmpLCDbright;
@@ -16504,21 +16499,19 @@ void processMyTouch()
         clearScreen();
         mainScreen(true);
       }
-      else
-
-          if ((x >= gseB[0]) && (x <= gseB[0] + 29) && (y >= gseB[1]) && (y <= gseB[1] + 145))
+      else if ((x >= gseB[0]) && (x <= gseB[0] + 29) && (y >= gseB[1] - 15) && (y <= gseB[1] + 145 + 17))
       {
-        if ((y >= gseB[1]) && (y <= gseB[1] - 15))
+        if ((y >= gseB[1] - 15) && (y <= gseB[1] - 15 + 22))
         {
           drawUpButtonSlide(gseB[0], gseB[1] - 15); // plus   gseB[1]-10
           if (tmpLCDbright < 100)
             tmpLCDbright++;
         }
-        else
-
-            if ((y >= gseB[1] + 23) && (y <= gseB[1] + 122))
-          tmpLCDbright = gseB[1] + 127 - y;
-        else if ((y >= gseB[1]) && (y <= gseB[1] + 140))
+        else if ((y >= gseB[1] + 19) && (y <= gseB[1] + 19 + 100))
+        {
+          tmpLCDbright = gseB[1] + 19 + 100 - y;
+        }
+        else if ((y >= gseB[1] + 140) && (y <= gseB[1] + 140 + 22))
         {
           drawDownButtonSlide(gseB[0], gseB[1] + 140); // minus   gseB[1]+134
           if (tmpLCDbright > 0)
